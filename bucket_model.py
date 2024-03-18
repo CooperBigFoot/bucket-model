@@ -1,3 +1,4 @@
+import re
 import pandas as pd
 import numpy as np
 from dataclasses import dataclass, field 
@@ -199,11 +200,14 @@ class BucketModel:
         
         Bonus quiz for exam preparation :) : What is the minimal value of rg?
         """
-        self.Q_gw = self.S / self.rg
+        self.Q_gw = self.S_gw / self.rg
 
     def update_groundwater_storage(self):
         """Update groundwater storage based on groundwater runoff."""
         self.S_gw += self.Percol - self.Q_gw
+
+        if self.S_gw < 0:
+            self.S_gw = 0
 
     def reset_variables(self):
         """Reset the state variables to their initial values."""
@@ -221,7 +225,7 @@ class BucketModel:
         """Run the model.
 
         Parameters:
-        - data: DataFrame with columns 'Date', 'Precip', 'T_max', 'T_min'.
+        - data: DataFrame with columns 'date', 'P_mix', 'T_max', 'T_min'.
         """
     
         intermediate_results = {
@@ -241,7 +245,7 @@ class BucketModel:
             self.reset_variables()
 
             self.Date = index
-            self.P = row['P_mix']  
+            self.Precip = row['P_mix']  
             self.T_max = row['T_max']
             self.T_min = row['T_min']
 
@@ -260,7 +264,8 @@ class BucketModel:
                 intermediate_results[key].append(getattr(self, key))
 
         results_df = pd.DataFrame(intermediate_results, index=data.index)
-        
+
+        # Update column names to include the units
         return results_df
     
     def update_parameters(self, parameters: dict):
