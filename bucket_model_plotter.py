@@ -7,14 +7,14 @@ import numpy as np                      # For the density plot
 import pandas as pd                     # For the data handling
 
 
-def plot_water_balance(results: pd.DataFrame, title: str = '', output_destination: str = '', color_palette: list = ['#004E64', '#007A9A', '#00A5CF', '#9FFFCB', '#25A18E'], start: str = '1986', end: str = '2000', figsize: tuple[int, int] = (10, 6), fontsize: int = 12) -> None:
+def plot_water_balance(results: pd.DataFrame, title: str = '', output_destination: str = '', palette: list = ['#004E64', '#007A9A', '#00A5CF', '#9FFFCB', '#25A18E'], start: str = '1986', end: str = '2000', figsize: tuple[int, int] = (10, 6), fontsize: int = 12) -> None:
     """This function plots the water balance of the model.
     
     Parameters:
     - results (pd.DataFrame): The results from the model run
     - title (str): The title of the plot, if empty, no title will be shown
     - output_destination (str): The path to the output file, if empty, the plot will not be saved
-    - paletette (list): The color paletette to use for the plot, default is ['#004E64', '007A9A', '00A5CF', '9FFFCB', '25A18E']
+    - palette (list): The color palette to use for the plot, default is ['#004E64', '007A9A', '00A5CF', '9FFFCB', '25A18E']
     - start (str): The start year of the plot, default is '1986'
     - end (str): The end year of the plot, default is '2000'
     - figsize (tuple): The size of the figure, default is (10, 6)
@@ -22,8 +22,7 @@ def plot_water_balance(results: pd.DataFrame, title: str = '', output_destinatio
     """
 
     # Some style settings, this is what I like, but feel free to change it
-    BAR_WIDTH = .3535
-    FONTSIZE = fontsize
+    BAR_WIDTH = .35
     sns.set_context('paper')
     sns.set_style('white')
 
@@ -53,15 +52,15 @@ def plot_water_balance(results: pd.DataFrame, title: str = '', output_destinatio
     fig, ax = plt.subplots(figsize=figsize)
 
     # Plot each component of the water balance
-    plot_bar_layer(ax, years - BAR_WIDTH / 2, yearly_totals['Rain'], 'Rain', color_palette[0])
-    plot_bar_layer(ax, years - BAR_WIDTH / 2, yearly_totals['Snow'], 'Snow', color_palette[1], bottom_layer_heights=yearly_totals['Rain'])
-    plot_bar_layer(ax, years + BAR_WIDTH / 2, yearly_totals['Q_s'], 'Q$_{surface}$', color_palette[2])
-    plot_bar_layer(ax, years + BAR_WIDTH / 2, yearly_totals['Q_gw'], 'Q$_{gw}$', color_palette[3], bottom_layer_heights=yearly_totals['Q_s'])
-    plot_bar_layer(ax, years + BAR_WIDTH / 2, yearly_totals['ET'], 'ET', color_palette[4], bottom_layer_heights=yearly_totals['Q_s'] + yearly_totals['Q_gw'])
+    plot_bar_layer(ax, years - BAR_WIDTH / 2, yearly_totals['Rain'], 'Rain', palette[0])
+    plot_bar_layer(ax, years - BAR_WIDTH / 2, yearly_totals['Snow'], 'Snow', palette[1], bottom_layer_heights=yearly_totals['Rain'])
+    plot_bar_layer(ax, years + BAR_WIDTH / 2, yearly_totals['Q_s'], 'Q$_{surface}$', palette[2])
+    plot_bar_layer(ax, years + BAR_WIDTH / 2, yearly_totals['Q_gw'], 'Q$_{gw}$', palette[3], bottom_layer_heights=yearly_totals['Q_s'])
+    plot_bar_layer(ax, years + BAR_WIDTH / 2, yearly_totals['ET'], 'ET', palette[4], bottom_layer_heights=yearly_totals['Q_s'] + yearly_totals['Q_gw'])
 
-    ax.tick_params(which='both', length=10, width=2, labelsize=FONTSIZE)
-    ax.set_ylabel('Water depth [mm]', fontsize=FONTSIZE)
-    ax.legend(fontsize=FONTSIZE, ncol=3, loc='best')
+    ax.tick_params(which='both', length=10, width=2, labelsize=fontsize)
+    ax.set_ylabel('Water depth [mm]', fontsize=fontsize)
+    ax.legend(fontsize=fontsize, ncol=3, loc='best')
     plt.tight_layout()
     sns.despine()
 
@@ -91,7 +90,6 @@ def plot_Q_Q(results: pd.DataFrame, validation: pd.DataFrame, title: str = '', o
     """
 
     # Some style settings, this is what I like, but feel free to change it
-    FONTSIZE = fontsize
     sns.set_context('paper')
 
     # Prepare the data
@@ -115,9 +113,9 @@ def plot_Q_Q(results: pd.DataFrame, validation: pd.DataFrame, title: str = '', o
         ax.plot([min_value, max_value], [min_value, max_value], color='black', linestyle='--')
 
     # Some more style settings. I recommend keeping this
-    ax.set_xlabel('Simulated total runoff [mm/d]', fontsize=FONTSIZE)
-    ax.set_ylabel('Observed total runoff [mm/d]', fontsize=FONTSIZE)
-    ax.tick_params(which='both', length=10, width=2, labelsize=FONTSIZE)
+    ax.set_xlabel('Simulated total runoff [mm/d]', fontsize=fontsize)
+    ax.set_ylabel('Observed total runoff [mm/d]', fontsize=fontsize)
+    ax.tick_params(which='both', length=10, width=2, labelsize=fontsize)
     ax.set_xscale('log')
     ax.set_yscale('log')
     ax.grid(color='gray', linestyle='--', linewidth=0.5, alpha=0.5)
@@ -131,7 +129,7 @@ def plot_Q_Q(results: pd.DataFrame, validation: pd.DataFrame, title: str = '', o
     if output_destination:
         fig.savefig(output_destination, dpi=300, bbox_inches='tight')
 
-def plot_ECDF(results: pd.DataFrame, validation: pd.DataFrame, title: str = '', output_destination: str = '', color_palette: list[str, str] = ['#007A9A', '#9FFFCB'], figsize: tuple[int, int] = (6, 6), fontsize: int = 12) -> None:
+def plot_ECDF(results: pd.DataFrame, validation: pd.DataFrame, title: str = '', output_destination: str = '', palette: list[str, str] = ['#007A9A', '#9FFFCB'], figsize: tuple[int, int] = (6, 6), fontsize: int = 12) -> None:
     """This function plots the empirical cumulative distribution function (ECDF) of the observed and simulated total runoff (Q) values.
     
     Parameters:
@@ -139,13 +137,12 @@ def plot_ECDF(results: pd.DataFrame, validation: pd.DataFrame, title: str = '', 
     - validation (pd.DataFrame): The validation data. Should contain the following column: 'Q' for the observed runoff
     - title (str): The title of the plot, if empty, no title will be shown
     - output_destination (str): The path to the output file, if empty, the plot will not be saved
-    - color_palette (list): The color palette to use for the plot, default is ['#007A9A', '#25A18E']
+    - palette (list): The color palette to use for the plot, default is ['#007A9A', '#25A18E']
     - figsize (tuple): The size of the figure, default is (6, 6)
     - fontsize (int): The fontsize of the plot, default is 12
     """
 
     # Some style settings, this is what I like, but feel free to change it
-    FONTSIZE = fontsize
     sns.set_context('paper')
 
     # Prepare the data
@@ -155,14 +152,14 @@ def plot_ECDF(results: pd.DataFrame, validation: pd.DataFrame, title: str = '', 
     fig, ax = plt.subplots(figsize=figsize)
 
     # Plot the ECDF of the observed and simulated total runoff
-    sns.ecdfplot(data=results_filtered['Total_Runoff'], ax=ax, color=color_palette[0], label='Simulated total runoff')
-    sns.ecdfplot(data=validation['Q'], ax=ax, color=color_palette[1], label='Observed total runoff')
+    sns.ecdfplot(data=results_filtered['Total_Runoff'], ax=ax, color=palette[0], label='Simulated total runoff')
+    sns.ecdfplot(data=validation['Q'], ax=ax, color=palette[1], label='Observed total runoff')
 
     # Some more style settings. I recommend keeping this
-    ax.set_xlabel('Total runoff [mm/d]', fontsize=FONTSIZE)
-    ax.set_ylabel('F cumulative', fontsize=FONTSIZE)
-    ax.tick_params(which='both', length=10, width=2, labelsize=FONTSIZE)
-    ax.legend(fontsize=FONTSIZE, loc='best')
+    ax.set_xlabel('Total runoff [mm/d]', fontsize=fontsize)
+    ax.set_ylabel('F cumulative', fontsize=fontsize)
+    ax.tick_params(which='both', length=10, width=2, labelsize=fontsize)
+    ax.legend(fontsize=fontsize, loc='best')
     plt.tight_layout()
     sns.despine()
     ax.grid(color='gray', linestyle='--', linewidth=0.5, alpha=0.5)
@@ -174,7 +171,7 @@ def plot_ECDF(results: pd.DataFrame, validation: pd.DataFrame, title: str = '', 
     if output_destination:
         fig.savefig(output_destination, dpi=300, bbox_inches='tight')
 
-def plot_KDE(results: pd.DataFrame, validation: pd.DataFrame, title: str = '', output_destination: str = '', color_palette: list[str, str] = ['#007A9A', '#25A18E'], figsize: tuple[int, int] = (6, 6), fontsize: int = 12, fill: bool = True) -> None:
+def plot_KDE(results: pd.DataFrame, validation: pd.DataFrame, title: str = '', output_destination: str = '', palette: list[str, str] = ['#007A9A', '#25A18E'], figsize: tuple[int, int] = (6, 6), fontsize: int = 12, fill: bool = True) -> None:
     """This function plots the kernel density estimate (KDE) of the observed and simulated total runoff (Q) values.
     
     Parameters:
@@ -182,14 +179,13 @@ def plot_KDE(results: pd.DataFrame, validation: pd.DataFrame, title: str = '', o
     - validation (pd.DataFrame): The validation data. Should contain the following column: 'Q' for the observed runoff
     - title (str): The title of the plot, if empty, no title will be shown
     - output_destination (str): The path to the output file, if empty, the plot will not be saved
-    - color_palette (list): The color palette to use for the plot, default is ['#007A9A', '#25A18E']
+    - palette (list): The color palette to use for the plot, default is ['#007A9A', '#25A18E']
     - figsize (tuple): The size of the figure, default is (6, 6)
     - fontsize (int): The fontsize of the plot, default is 12
     - fill (bool): If True, the KDE will be filled, default is True
     """
 
     # Some style settings, this is what I like, but feel free to change it
-    FONTSIZE = fontsize
     sns.set_context('paper')
 
     # Prepare the data
@@ -199,14 +195,14 @@ def plot_KDE(results: pd.DataFrame, validation: pd.DataFrame, title: str = '', o
     fig, ax = plt.subplots(figsize=figsize)
 
     # Plot the KDE of the observed and simulated total runoff
-    sns.kdeplot(data=results_filtered['Total_Runoff'], ax=ax, color=color_palette[0], label='Simulated total runoff', fill=fill)
-    sns.kdeplot(data=validation['Q'], ax=ax, color=color_palette[1], label='Observed total runoff', fill=fill)
+    sns.kdeplot(data=results_filtered['Total_Runoff'], ax=ax, color=palette[0], label='Simulated total runoff', fill=fill)
+    sns.kdeplot(data=validation['Q'], ax=ax, color=palette[1], label='Observed total runoff', fill=fill)
 
     # Some more style settings. I recommend keeping this
-    ax.set_xlabel('Total runoff [mm/d]', fontsize=FONTSIZE)
-    ax.set_ylabel('Density', fontsize=FONTSIZE)
-    ax.tick_params(which='both', length=10, width=2, labelsize=FONTSIZE)
-    ax.legend(fontsize=FONTSIZE, loc='best')
+    ax.set_xlabel('Total runoff [mm/d]', fontsize=fontsize)
+    ax.set_ylabel('Density', fontsize=fontsize)
+    ax.tick_params(which='both', length=10, width=2, labelsize=fontsize)
+    ax.legend(fontsize=fontsize, loc='best')
     plt.tight_layout()
     sns.despine()
     ax.grid(color='gray', linestyle='--', linewidth=0.5, alpha=0.5)
@@ -235,7 +231,6 @@ def plot_monthly_boxplot(results: pd.DataFrame, title: str = '', output_destinat
     """
 
     # Some style settings, this is what I like, but feel free to change it
-    FONTSIZE = fontsize
     sns.set_context('paper')
 
     # Prepare the data
@@ -265,7 +260,7 @@ def plot_monthly_boxplot(results: pd.DataFrame, title: str = '', output_destinat
     monthly_sums['Month'] = monthly_sums['Month'].map(months)
 
     fig = plt.figure(figsize=figsize)
-    layout = (2, 2) # 2 columns, 2 rows
+    layout = (2, 2) # 2 rows, 2 columns
 
     # Defining the location of the subplots. This is a 2x2 grid, change the layout variable if you want to change the grid
     ax_precip = plt.subplot2grid(layout, (0, 0))
@@ -280,69 +275,75 @@ def plot_monthly_boxplot(results: pd.DataFrame, title: str = '', output_destinat
 
     # Some more style settings. I recommend keeping this
     ax_precip.set_xlabel('')
-    ax_precip.set_ylabel('Precipitation [mm/d]', fontsize=FONTSIZE)
-    ax_precip.tick_params(which='both', length=10, width=2, labelsize=FONTSIZE)
-    ax_precip.set_title('Monthly Precipitation', fontsize=FONTSIZE)
+    ax_precip.set_ylabel('Precipitation [mm/d]', fontsize=fontsize)
+    ax_precip.tick_params(which='both', length=10, width=2, labelsize=fontsize)
+    ax_precip.set_title('Monthly Precipitation', fontsize=fontsize)
     ax_precip.grid(color='gray', linestyle='--', linewidth=0.5, alpha=0.5)
 
     ax_et.set_xlabel('')
-    ax_et.set_ylabel('Actual ET [mm/d]', fontsize=FONTSIZE)
-    ax_et.tick_params(which='both', length=10, width=2, labelsize=FONTSIZE)
-    ax_et.set_title('Monthly Actual ET', fontsize=FONTSIZE)
+    ax_et.set_ylabel('Actual ET [mm/d]', fontsize=fontsize)
+    ax_et.tick_params(which='both', length=10, width=2, labelsize=fontsize)
+    ax_et.set_title('Monthly Actual ET', fontsize=fontsize)
     ax_et.grid(color='gray', linestyle='--', linewidth=0.5, alpha=0.5)
 
     ax_snow_melt.set_xlabel('')
-    ax_snow_melt.set_ylabel('Snowmelt [mm/d]', fontsize=FONTSIZE)
-    ax_snow_melt.tick_params(which='both', length=10, width=2, labelsize=FONTSIZE)
-    ax_snow_melt.set_title('Monthly Snowmelt', fontsize=FONTSIZE)
+    ax_snow_melt.set_ylabel('Snowmelt [mm/d]', fontsize=fontsize)
+    ax_snow_melt.tick_params(which='both', length=10, width=2, labelsize=fontsize)
+    ax_snow_melt.set_title('Monthly Snowmelt', fontsize=fontsize)
     ax_snow_melt.grid(color='gray', linestyle='--', linewidth=0.5, alpha=0.5)
 
     ax_runoff.set_xlabel('')
-    ax_runoff.set_ylabel('Total Runoff [mm/d]', fontsize=FONTSIZE)
-    ax_runoff.tick_params(which='both', length=10, width=2, labelsize=FONTSIZE)
-    ax_runoff.set_title('Monthly Total Runoff', fontsize=FONTSIZE)
+    ax_runoff.set_ylabel('Total Runoff [mm/d]', fontsize=fontsize)
+    ax_runoff.tick_params(which='both', length=10, width=2, labelsize=fontsize)
+    ax_runoff.set_title('Monthly Total Runoff', fontsize=fontsize)
     ax_runoff.grid(color='gray', linestyle='--', linewidth=0.5, alpha=0.5)
 
     plt.tight_layout()
     sns.despine()
 
     if title:
-        plt.suptitle(title, fontsize=FONTSIZE)
+        plt.suptitle(title, fontsize=fontsize)
 
     # Save the plot if an output destination is provided
     if output_destination:
         fig.savefig(output_destination, dpi=300, bbox_inches='tight')
 
 
-# TODO: implement the plot_timeseries function
 def plot_timeseries(results: pd.DataFrame, validation: pd.DataFrame, start_year: str, end_year: str, monthly: bool = False, title: str = '', output_destination: str = '', figsize: tuple[int, int] = (10, 6), fontsize: int = 12, palette: list[str, str] = ['#007A9A', '#25A18E']) -> None:
-    """This function plots the timeseries of a specific model output.
+    """This function plots the timeseries of the observed and simulated total runoff (Q) values.
 
     Parameters:
     - results (pd.DataFrame): The results from the model run
     - validation (pd.DataFrame): The validation data. Should contain the following column: 'Q' for the observed runoff
     - start_year (str): The start date of the plot
     - end_year (str): The end date of the plot. The plot will be inclusive of this date
-    - monthly (bool): If True, the plot will be monthly, default is False
+    - monthly (bool): If True, the plot will be monthly, default is False, which means the plot will be daily
     - title (str): The title of the plot, if empty, no title will be shown
     - output_destination (str): The path to the output file, if empty, the plot will not be saved
     - figsize (tuple): The size of the figure, default is (10, 6)
     - fontsize (int): The fontsize of the plot, default is 12
     """
 
+    # Some style settings, this is what I like, but feel free to change it
+    sns.set_context('paper')
+
     # Prepare the data
     results_filtered = results.copy()
+    results_filtered = results_filtered[start_year:end_year]
     results_filtered['Total_Runoff'] = results_filtered['Q_s'] + results_filtered['Q_gw']
+
+    validation_filtered = validation.copy()
+    validation_filtered = validation_filtered[start_year:end_year]
 
     fig, ax = plt.subplots(figsize=figsize)
 
     # Resample the data if monthly is True
     if monthly:
-        results_filtered = results_filtered[start_year:end_year].resample('M').sum()
-        validation = validation[start_year:end_year].resample('M').sum()
+        results_filtered = results_filtered.resample('M').sum()
+        validation_filtered = validation_filtered.resample('M').sum()
 
     sns.lineplot(data=results_filtered['Total_Runoff'], ax=ax, color=palette[0], label='Simulated total runoff', alpha=0.7)
-    sns.lineplot(data=validation['Q'], ax=ax, color=palette[1], label='Observed total runoff', alpha=0.7)
+    sns.lineplot(data=validation_filtered['Q'], ax=ax, color=palette[1], label='Observed total runoff', alpha=0.7)
 
     ax.set_xlabel('')
 
