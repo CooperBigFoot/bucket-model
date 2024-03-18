@@ -1,9 +1,10 @@
-from shutil import which
-from tkinter import font
-import seaborn as sns
-import matplotlib.pyplot as plt
+import seaborn as sns                   # For styling the plots
+import matplotlib.pyplot as plt         # For plotting
 
-import pandas as pd
+from scipy.stats import gaussian_kde    # For the density plot
+import numpy as np                      # For the density plot
+
+import pandas as pd                     # For the data handling
 
 
 def plot_water_balance(results: pd.DataFrame, title: str = '', output_destination: str = '', palette: list = ['#004E64', '#007A9A', '#00A5CF', '#9FFFCB', '#25A18E'], start: str = '1986', end: str = '2000', figsize: tuple[int, int] = (10, 6), fontsize: int = 12) -> None:
@@ -76,14 +77,74 @@ def plot_water_balance(results: pd.DataFrame, title: str = '', output_destinatio
 
 
 # TODO: Implement the plot_Q_Q function
-def plot_Q_Q(results: pd.DataFrame, title: str = '', output_destination: str = '', color: str = 'blue', fancy: bool = False) -> None:
+def plot_Q_Q(results: pd.DataFrame, validation: pd.DataFrame, title: str = '', output_destination: str = '', color: str = '#007A9A', figsize: tuple[int, int] = (6, 6), fontsize: int = 12, line: bool = True, kde: bool = True, cmap: str = 'rainbow') -> None:
     """This function plots the observed vs simulated total runoff (Q) values.
     
     Parameters:
     - results (pd.DataFrame): The results from the model run
+    - validation (pd.DataFrame): The validation data. Should the following column: 'Q' for the observed runoff
     - title (str): The title of the plot, if empty, no title will be shown
     - output_destination (str): The path to the output file, if empty, the plot will not be saved
-    - color (str): The color of the plot, default is 'blue'
-    - fancy (bool): If True, the plot gets a fancy look, default is False. Inspiration: https://seaborn.pydata.org/examples/layered_bivariate_plot.html
+    - color (str): The color of the plot, default is '#007A9A' (a nice blue color)
+    - figsize (tuple): The size of the figure, default is (10, 6)
+    - fontsize (int): The fontsize of the plot, default is 12
+    - line (bool): If True, a 1:1 line will be plotted, default is True
+    - kde (bool): If True, a kernel density estimate will be plotted, default is True. Basically colors the points based on the number of points in that area.
+      For morre info see: https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.gaussian_kde.html 
+    - cmap (str): The colormap to use for the kde, default is 'rainbow'
     """
-    pass
+
+    # Some style settings, these is what I like, but feel free to change
+    FONTSIZE = fontsize
+    sns.set_context('paper')
+
+    # Prepare the data
+    results_filtered = results.copy()
+    results_filtered['Total_Runoff'] = results_filtered['Q_s'] + results_filtered['Q_gw']
+
+    fig, ax = plt.subplots(figsize=figsize)
+
+    if kde: # If you choose to use the kde, the points will be colored based on the number of points in that area
+        xy = np.vstack([results_filtered['Total_Runoff'], validation['Q']])
+        z = gaussian_kde(xy)(xy)
+        sns.scatterplot(x=results_filtered['Total_Runoff'], y=validation['Q'], ax=ax, c=z, s=30, cmap=cmap, edgecolor='none')
+
+    else: # If you choose not to use the kde, the points will be colored based on the color parameter
+        sns.scatterplot(x=results_filtered['Total_Runoff'], y=validation['Q'], ax=ax, color=color, s=30, edgecolor='none')
+
+    if line:
+        min_value = min(results_filtered['Total_Runoff'].min(), validation['Q'].min())
+        max_value = max(results_filtered['Total_Runoff'].max(), validation['Q'].max())
+
+        ax.plot([min_value, max_value], [min_value, max_value], color='black', linestyle='--')
+
+    # Some more style settings. I recommend keeping these
+    ax.set_xlabel('Simulated total runoff [mm]', fontsize=FONTSIZE)
+    ax.set_ylabel('Observed total runoff [mm]', fontsize=FONTSIZE)
+    ax.tick_params(which='both', length=10, width=2, labelsize=FONTSIZE)
+    ax.set_xscale('log')
+    ax.set_yscale('log')
+
+    if title:
+        plt.title(title)
+
+    plt.tight_layout()
+    sns.despine()
+
+    plt.show()
+
+    # Save the plot if an output destination is provided
+    if output_destination:
+        fig.savefig(output_destination, dpi=300, bbox_inches='tight')
+
+# TODO: implement the plot_ECDF function
+
+
+
+# TODO: implement the plot_boxplot function
+        
+
+# TODO: implement the plot_timeseries function
+
+
+
