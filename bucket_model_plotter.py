@@ -279,21 +279,25 @@ def plot_monthly_boxplot(results: pd.DataFrame, title: str = '', output_destinat
     ax_precip.set_ylabel('Precipitation [mm/d]', fontsize=FONTSIZE)
     ax_precip.tick_params(which='both', length=10, width=2, labelsize=FONTSIZE)
     ax_precip.set_title('Monthly Precipitation', fontsize=FONTSIZE)
+    ax_precip.grid(color='gray', linestyle='--', linewidth=0.5, alpha=0.5)
 
     ax_et.set_xlabel('')
     ax_et.set_ylabel('Actual ET [mm/d]', fontsize=FONTSIZE)
     ax_et.tick_params(which='both', length=10, width=2, labelsize=FONTSIZE)
     ax_et.set_title('Monthly Actual ET', fontsize=FONTSIZE)
+    ax_et.grid(color='gray', linestyle='--', linewidth=0.5, alpha=0.5)
 
     ax_snow_melt.set_xlabel('')
     ax_snow_melt.set_ylabel('Snowmelt [mm/d]', fontsize=FONTSIZE)
     ax_snow_melt.tick_params(which='both', length=10, width=2, labelsize=FONTSIZE)
     ax_snow_melt.set_title('Monthly Snowmelt', fontsize=FONTSIZE)
+    ax_snow_melt.grid(color='gray', linestyle='--', linewidth=0.5, alpha=0.5)
 
     ax_runoff.set_xlabel('')
     ax_runoff.set_ylabel('Total Runoff [mm/d]', fontsize=FONTSIZE)
     ax_runoff.tick_params(which='both', length=10, width=2, labelsize=FONTSIZE)
     ax_runoff.set_title('Monthly Total Runoff', fontsize=FONTSIZE)
+    ax_runoff.grid(color='gray', linestyle='--', linewidth=0.5, alpha=0.5)
 
     plt.tight_layout()
     sns.despine()
