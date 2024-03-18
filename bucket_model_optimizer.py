@@ -70,8 +70,7 @@ class BucketModelOptimizer:
         bounds_list = list(self.bounds.values())
 
         # Randomly generate an initial guess for each parameter.
-        initial_guess = [np.random.uniform(lower, upper)
-                         for lower, upper in bounds_list]
+        initial_guess = [np.random.uniform(lower, upper) for lower, upper in bounds_list]
 
         if self.method == 'local':
             method = 'L-BFGS-B'  # Have a look at the doc for more methods: https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.minimize.html

@@ -41,9 +41,9 @@ class BucketModel:
             raise ValueError("k must be positive")
         if self.S_max <= 0:
             raise ValueError("S_max must be positive")
-        if self.fr <= 0 or self.fr >= 1:
+        if self.fr < 0 or self.fr > 1:
             raise ValueError("fr must be between 0 and 1")
-        if self.rg <= 1: # This why that is
+        if self.rg < 1: # This why that is
             raise ValueError("rg must be greater than 1")
         
     def set_catchment_properties(self, lapse_rate: float, station_elevation: float, basin_elevation: float, snowmelt_temp_threshold: float, latitude: float) -> None:
@@ -93,6 +93,7 @@ class BucketModel:
             self.Rain = self.Precip * rain_fraction
             self.Snow = self.Precip - self.Rain
 
+    # TODO: Check if the snowmelt is correct
     def compute_snow_melt(self):
         """Compute snowmelt based on basin temperature.
 
