@@ -78,7 +78,7 @@ def plot_Q_Q(results: pd.DataFrame, validation: pd.DataFrame, title: str = '', o
     
     Parameters:
     - results (pd.DataFrame): The results from the model run
-    - validation (pd.DataFrame): The validation data. Should the following column: 'Q' for the observed runoff
+    - validation (pd.DataFrame): The validation data. Should contain the following column: 'Q' for the observed runoff
     - title (str): The title of the plot, if empty, no title will be shown
     - output_destination (str): The path to the output file, if empty, the plot will not be saved
     - color (str): The color of the plot, default is '#007A9A' (a nice blue color)
@@ -136,7 +136,7 @@ def plot_ECDF(results: pd.DataFrame, validation: pd.DataFrame, title: str = '', 
     
     Parameters:
     - results (pd.DataFrame): The results from the model run
-    - validation (pd.DataFrame): The validation data. Should the following column: 'Q' for the observed runoff
+    - validation (pd.DataFrame): The validation data. Should contain the following column: 'Q' for the observed runoff
     - title (str): The title of the plot, if empty, no title will be shown
     - output_destination (str): The path to the output file, if empty, the plot will not be saved
     - color_palette (list): The color palette to use for the plot, default is ['#007A9A', '#25A18E']
@@ -179,7 +179,7 @@ def plot_KDE(results: pd.DataFrame, validation: pd.DataFrame, title: str = '', o
     
     Parameters:
     - results (pd.DataFrame): The results from the model run
-    - validation (pd.DataFrame): The validation data. Should the following column: 'Q' for the observed runoff
+    - validation (pd.DataFrame): The validation data. Should contain the following column: 'Q' for the observed runoff
     - title (str): The title of the plot, if empty, no title will be shown
     - output_destination (str): The path to the output file, if empty, the plot will not be saved
     - color_palette (list): The color palette to use for the plot, default is ['#007A9A', '#25A18E']
@@ -219,7 +219,7 @@ def plot_KDE(results: pd.DataFrame, validation: pd.DataFrame, title: str = '', o
         fig.savefig(output_destination, dpi=300, bbox_inches='tight')
 
 
-def plot_monthly_boxplot(results: pd.DataFrame, title: str = '', output_destination: str = '', figsize: tuple[int, int] = (12, 12), fontsize: int = 12) -> None:
+def plot_monthly_boxplot(results: pd.DataFrame, title: str = '', output_destination: str = '', figsize: tuple[int, int] = (12, 12), fontsize: int = 12, palette: list[str, str, str, str] = ['#004E64', '#007A9A', '#00A5CF', '#9FFFCB']) -> None:
     """This function plots the monthly boxplot of the simulated environmental variables: 
     - Monthly Precipitation 
     - Actual Monthly Evapotranspiration
@@ -228,6 +228,10 @@ def plot_monthly_boxplot(results: pd.DataFrame, title: str = '', output_destinat
     
     Parameters:
     - results (pd.DataFrame): The results from the model run, make sure you have the following columns: 'Precip', 'ET', 'Snow_melt', 'Q_s', 'Q_gw'
+    - title (str): The title of the plot, if empty, no title will be shown
+    - output_destination (str): The path to the output file, if empty, the plot will not be saved
+    - figsize (tuple): The size of the figure, default is (12, 12)
+    - fontsize (int): The fontsize of the plot, default is 12
     """
 
     # Some style settings, this is what I like, but feel free to change it
@@ -269,10 +273,10 @@ def plot_monthly_boxplot(results: pd.DataFrame, title: str = '', output_destinat
     ax_snow_melt = plt.subplot2grid(layout, (1, 0))
     ax_runoff = plt.subplot2grid(layout, (1, 1))
 
-    sns.boxplot(x='Month', y='Precip', data=monthly_sums, ax=ax_precip, color='#004E64')
-    sns.boxplot(x='Month', y='ET', data=monthly_sums, ax=ax_et, color='#007A9A')
-    sns.boxplot(x='Month', y='Snow_melt', data=monthly_sums, ax=ax_snow_melt, color='#00A5CF')
-    sns.boxplot(x='Month', y='Total_Runoff', data=monthly_sums, ax=ax_runoff, color='#9FFFCB')
+    sns.boxplot(x='Month', y='Precip', data=monthly_sums, ax=ax_precip, color=palette[0])
+    sns.boxplot(x='Month', y='ET', data=monthly_sums, ax=ax_et, color=palette[1])
+    sns.boxplot(x='Month', y='Snow_melt', data=monthly_sums, ax=ax_snow_melt, color=palette[2])
+    sns.boxplot(x='Month', y='Total_Runoff', data=monthly_sums, ax=ax_runoff, color=palette[3])
 
     # Some more style settings. I recommend keeping this
     ax_precip.set_xlabel('')
@@ -311,6 +315,61 @@ def plot_monthly_boxplot(results: pd.DataFrame, title: str = '', output_destinat
 
 
 # TODO: implement the plot_timeseries function
+def plot_timeseries(results: pd.DataFrame, validation: pd.DataFrame, start_year: str, end_year: str, monthly: bool = False, title: str = '', output_destination: str = '', figsize: tuple[int, int] = (10, 6), fontsize: int = 12, palette: list[str, str] = ['#007A9A', '#25A18E']) -> None:
+    """This function plots the timeseries of a specific model output.
+
+    Parameters:
+    - results (pd.DataFrame): The results from the model run
+    - validation (pd.DataFrame): The validation data. Should contain the following column: 'Q' for the observed runoff
+    - start_year (str): The start date of the plot
+    - end_year (str): The end date of the plot. The plot will be inclusive of this date
+    - monthly (bool): If True, the plot will be monthly, default is False
+    - title (str): The title of the plot, if empty, no title will be shown
+    - output_destination (str): The path to the output file, if empty, the plot will not be saved
+    - figsize (tuple): The size of the figure, default is (10, 6)
+    - fontsize (int): The fontsize of the plot, default is 12
+    """
+
+    # Prepare the data
+    results_filtered = results.copy()
+    results_filtered['Total_Runoff'] = results_filtered['Q_s'] + results_filtered['Q_gw']
+
+    fig, ax = plt.subplots(figsize=figsize)
+
+    # Resample the data if monthly is True
+    if monthly:
+        results_filtered = results_filtered[start_year:end_year].resample('M').sum()
+        validation = validation[start_year:end_year].resample('M').sum()
+
+    sns.lineplot(data=results_filtered['Total_Runoff'], ax=ax, color=palette[0], label='Simulated total runoff', alpha=0.7)
+    sns.lineplot(data=validation['Q'], ax=ax, color=palette[1], label='Observed total runoff', alpha=0.7)
+
+    ax.set_xlabel('')
+
+    if monthly:
+        ax.set_ylabel('Total runoff [mm/month]', fontsize=fontsize)
+    else:
+        ax.set_ylabel('Total runoff [mm/d]', fontsize=fontsize)
+
+    ax.tick_params(which='both', length=10, width=2, labelsize=fontsize)
+    ax.legend(fontsize=fontsize, loc='best')
+    plt.tight_layout()
+    sns.despine()
+    ax.grid(color='gray', linestyle='--', linewidth=0.5, alpha=0.5)
+
+    if title:
+        plt.title(title)
+
+    if output_destination:
+        fig.savefig(output_destination, dpi=300, bbox_inches='tight')
+
+
+
+
+
+
+    
+
 
 
 
