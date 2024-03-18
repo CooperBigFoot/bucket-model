@@ -7,7 +7,7 @@ import numpy as np                      # For the density plot
 import pandas as pd                     # For the data handling
 
 
-def plot_water_balance(results: pd.DataFrame, title: str = '', output_destination: str = '', palette: list = ['#004E64', '#007A9A', '#00A5CF', '#9FFFCB', '#25A18E'], start: str = '1986', end: str = '2000', figsize: tuple[int, int] = (10, 6), fontsize: int = 12) -> None:
+def plot_water_balance(results: pd.DataFrame, title: str = '', output_destination: str = '', color_palette: list = ['#004E64', '#007A9A', '#00A5CF', '#9FFFCB', '#25A18E'], start: str = '1986', end: str = '2000', figsize: tuple[int, int] = (10, 6), fontsize: int = 12) -> None:
     """This function plots the water balance of the model.
     
     Parameters:
@@ -53,23 +53,20 @@ def plot_water_balance(results: pd.DataFrame, title: str = '', output_destinatio
     fig, ax = plt.subplots(figsize=figsize)
 
     # Plot each component of the water balance
-    plot_bar_layer(ax, years - BAR_WIDTH / 2, yearly_totals['Rain'], 'Rain', palette[0])
-    plot_bar_layer(ax, years - BAR_WIDTH / 2, yearly_totals['Snow'], 'Snow', palette[1], bottom_layer_heights=yearly_totals['Rain'])
-    plot_bar_layer(ax, years + BAR_WIDTH / 2, yearly_totals['Q_s'], 'Q$_{surface}$', palette[2])
-    plot_bar_layer(ax, years + BAR_WIDTH / 2, yearly_totals['Q_gw'], 'Q$_{gw}$', palette[3], bottom_layer_heights=yearly_totals['Q_s'])
-    plot_bar_layer(ax, years + BAR_WIDTH / 2, yearly_totals['ET'], 'ET', palette[4], bottom_layer_heights=yearly_totals['Q_s'] + yearly_totals['Q_gw'])
+    plot_bar_layer(ax, years - BAR_WIDTH / 2, yearly_totals['Rain'], 'Rain', color_palette[0])
+    plot_bar_layer(ax, years - BAR_WIDTH / 2, yearly_totals['Snow'], 'Snow', color_palette[1], bottom_layer_heights=yearly_totals['Rain'])
+    plot_bar_layer(ax, years + BAR_WIDTH / 2, yearly_totals['Q_s'], 'Q$_{surface}$', color_palette[2])
+    plot_bar_layer(ax, years + BAR_WIDTH / 2, yearly_totals['Q_gw'], 'Q$_{gw}$', color_palette[3], bottom_layer_heights=yearly_totals['Q_s'])
+    plot_bar_layer(ax, years + BAR_WIDTH / 2, yearly_totals['ET'], 'ET', color_palette[4], bottom_layer_heights=yearly_totals['Q_s'] + yearly_totals['Q_gw'])
 
     ax.tick_params(which='both', length=10, width=2, labelsize=FONTSIZE)
     ax.set_ylabel('Water depth [mm]', fontsize=FONTSIZE)
-
     ax.legend(fontsize=FONTSIZE, ncol=3, loc='best')
-    if title:
-        plt.title(title)
-
     plt.tight_layout()
     sns.despine()
 
-    plt.show()
+    if title:
+        plt.title(title)
 
     # Save the plot if an output destination is provided
     if output_destination:
@@ -119,27 +116,66 @@ def plot_Q_Q(results: pd.DataFrame, validation: pd.DataFrame, title: str = '', o
         ax.plot([min_value, max_value], [min_value, max_value], color='black', linestyle='--')
 
     # Some more style settings. I recommend keeping these
-    ax.set_xlabel('Simulated total runoff [mm]', fontsize=FONTSIZE)
-    ax.set_ylabel('Observed total runoff [mm]', fontsize=FONTSIZE)
+    ax.set_xlabel('Simulated total runoff [mm/d]', fontsize=FONTSIZE)
+    ax.set_ylabel('Observed total runoff [mm/d]', fontsize=FONTSIZE)
     ax.tick_params(which='both', length=10, width=2, labelsize=FONTSIZE)
     ax.set_xscale('log')
     ax.set_yscale('log')
-
-    if title:
-        plt.title(title)
-
+    ax.grid(color='gray', linestyle='--', linewidth=0.5, alpha=0.5)
     plt.tight_layout()
     sns.despine()
 
-    plt.show()
+
+    if title:
+        plt.title(title)
 
     # Save the plot if an output destination is provided
     if output_destination:
         fig.savefig(output_destination, dpi=300, bbox_inches='tight')
 
 # TODO: implement the plot_ECDF function
+def plot_ECDF(results: pd.DataFrame, validation: pd.DataFrame, title: str = '', output_destination: str = '', color_palette: list[str, str] = ['#007A9A', '#9FFFCB'], figsize: tuple[int, int] = (6, 6), fontsize: int = 12) -> None:
+    """This function plots the empirical cumulative distribution function (ECDF) of the observed and simulated total runoff (Q) values.
+    
+    Parameters:
+    - results (pd.DataFrame): The results from the model run
+    - validation (pd.DataFrame): The validation data. Should the following column: 'Q' for the observed runoff
+    - title (str): The title of the plot, if empty, no title will be shown
+    - output_destination (str): The path to the output file, if empty, the plot will not be saved
+    - color_palette (list): The color palette to use for the plot, default is ['#007A9A', '#25A18E']
+    - figsize (tuple): The size of the figure, default is (6, 6)
+    - fontsize (int): The fontsize of the plot, default is 12
+    """
 
+    # Some style settings, these is what I like, but feel free to change
+    FONTSIZE = fontsize
+    sns.set_context('paper')
 
+    # Prepare the data
+    results_filtered = results.copy()
+    results_filtered['Total_Runoff'] = results_filtered['Q_s'] + results_filtered['Q_gw']
+
+    fig, ax = plt.subplots(figsize=figsize)
+
+    # Plot the ECDF of the observed and simulated total runoff
+    sns.ecdfplot(data=results_filtered['Total_Runoff'], ax=ax, color=color_palette[0], label='Simulated total runoff')
+    sns.ecdfplot(data=validation['Q'], ax=ax, color=color_palette[1], label='Observed total runoff')
+
+    # Some more style settings. I recommend keeping these
+    ax.set_xlabel('Total runoff [mm/d]', fontsize=FONTSIZE)
+    ax.set_ylabel('F cumulative', fontsize=FONTSIZE)
+    ax.tick_params(which='both', length=10, width=2, labelsize=FONTSIZE)
+    ax.legend(fontsize=FONTSIZE, loc='best')
+    plt.tight_layout()
+    sns.despine()
+    ax.grid(color='gray', linestyle='--', linewidth=0.5, alpha=0.5)
+
+    if title:
+        plt.title(title)
+
+    # Save the plot if an output destination is provided
+    if output_destination:
+        fig.savefig(output_destination, dpi=300, bbox_inches='tight')
 
 # TODO: implement the plot_boxplot function
         
