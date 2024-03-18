@@ -1,12 +1,13 @@
 import pandas as pd 
 
-def preprocess_data(path_to_file: str, output_destination: str, catchment_area: float) -> None:
+def preprocess_data(path_to_file: str, catchment_area: float, save: bool = False, output_destination: str = None) -> None:
     """This function takes the .txt file you find on moodle and transforms it into a pandas DataFrame.
     
     Parameters:
     - path_to_file (str): The path to the .txt file
     - output_destination (str): The path to the new .csv file
     - catchment_area (float): The catchment area in km^2
+    - save (bool): If True, the preprocessed data will be saved to a new .csv file. If False, the function will only return the preprocessed data.
     """
 
     precipitation = pd.read_csv(path_to_file, sep='\s+', skiprows=1, header=0)
@@ -31,8 +32,10 @@ def preprocess_data(path_to_file: str, output_destination: str, catchment_area: 
 
     precipitation['Q'] = (precipitation['Q'] * 60 * 60 * 24) / catchment_area / 1000 # Convert m^3/s to mm/day
     
-    # Save the preprocessed data to a new .csv file
-    precipitation.to_csv(output_destination, index=True, header=True)
+    if save:
+        precipitation.to_csv(output_destination, index=True, header=True)
+    
+    return precipitation
 
 def main() -> None:
     """
