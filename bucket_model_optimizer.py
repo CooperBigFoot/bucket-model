@@ -52,7 +52,7 @@ class BucketModelOptimizer:
         simulated_Q = model_run['Q_s'] + model_run['Q_gw']
         return self.rmse(simulated_Q, observed_Q)
 
-    def optimize(self) -> dict:
+    def calibrate(self) -> dict:
         """
         This method optimizes the model's parameters using the method and bounds
         specified in the set_options method. The method can be either 'local' or 'global'.
@@ -84,9 +84,9 @@ class BucketModelOptimizer:
             )
 
             optimal_param_list = result.x
-            optimal_param_dict = create_param_dict(self.bounds.keys(), optimal_param_list)
+            calibrated_parameters = create_param_dict(self.bounds.keys(), optimal_param_list)
 
-            return optimal_param_dict
+            return calibrated_parameters
         
         elif self.method == 'global':
             # The way basinhopping works, is that it find a bunch of local minima and then chooses the best one. Hence the name 'basinhopping'. 
@@ -99,6 +99,6 @@ class BucketModelOptimizer:
             )
 
             optimal_param_list = result.x
-            optimal_param_dict = create_param_dict(self.bounds.keys(), optimal_param_list)
+            calibrated_parameters = create_param_dict(self.bounds.keys(), optimal_param_list)
 
-            return optimal_param_dict
+            return calibrated_parameters
