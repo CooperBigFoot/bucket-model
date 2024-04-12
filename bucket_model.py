@@ -9,6 +9,7 @@ class BucketModel:
     S_max : float # max soil water storage
     fr : float # fraction of impermeable area at soil saturation 
     rg : float # mean residence time of water in grondwater
+    gauge_adj : float # parameter to adjust for undercatch by rain gauge
 
     S : float = field(default=10, init=False, repr=False) # soil water content. Initial condition can be changed
     S_gw : float = field(default = 100, init=False, repr=False) # groundwater storage. Initial condition can be changed
@@ -62,7 +63,15 @@ class BucketModel:
         self.T_SM = snowmelt_temp_threshold # °C
         self.LAT = latitude # °N
 
-    def adjust_temperature(self):
+    # TODO: implement change_initial_conditions method
+    def change_initial_conditions(self) -> None:
+        """
+        This method changes the initial conditions of the model.
+        """
+        raise NotImplementedError("This method is not implemented yet.")
+    
+
+    def adjust_temperature(self) -> None:
         # Compute 'mean' basin temperature
         T = (self.T_max + self.T_min) / 2
 
@@ -74,7 +83,15 @@ class BucketModel:
         self.T_max += LR_DELTA_H
         self.T_min += LR_DELTA_H
 
-    def partition_precipitation(self):
+    def gauge_adjustment(self, precipitation) -> None:
+        """Adjust for undercatch by the rain gauge.
+
+        Parameters:
+        - precipitation: Precipitation value to adjust.
+        """
+        self.Precip = precipitation * (1 + self.gauge_adj)
+
+    def partition_precipitation(self) -> None:
         """Partition precipitation into rainfall and snowfall based on temperature thresholds.
 
         Process:
@@ -94,7 +111,7 @@ class BucketModel:
             self.Snow = self.Precip - self.Rain
 
     # TODO: Check if the snowmelt is correct
-    def compute_snow_melt(self):
+    def compute_snow_melt(self) -> None:
         """Compute snowmelt based on basin temperature.
 
         Process:
@@ -108,11 +125,11 @@ class BucketModel:
                 self.k * (self.T_basin - self.T_SM), self.Snow_accum
             )
 
-    def update_snow_accum(self):
+    def update_snow_accum(self) -> None:
         """Update snow cover based on snowfall and snowmelt."""
         self.Snow_accum += self.Snow - self.Snow_melt
     
-    def compute_julianday(self):
+    def compute_julianday(self) -> int:
         """Compute the Julian day based on self.Date.
 
         Returns:
@@ -121,7 +138,7 @@ class BucketModel:
         J = self.Date.timetuple().tm_yday
         return J
     
-    def _Hamon_PET(self):
+    def _Hamon_PET(self) -> float:
         """Calculate potential evapotranspiration using Hamon (1961): https://ascelibrary.org/doi/10.1061/JYCEAJ.0000599.
 
         Important:
@@ -150,7 +167,7 @@ class BucketModel:
 
         return E
     
-    def compute_evapotranspiration(self):
+    def compute_evapotranspiration(self) -> None:
         """Compute evapotranspiration using the Hamon method.
 
         Parameters:
@@ -161,13 +178,13 @@ class BucketModel:
         rel_soil_moisture = self.S / self.S_max
         self.ET = self.PET * rel_soil_moisture
 
-    def surface_runoff(self):
+    def surface_runoff(self) -> None:
         self.Q_s = (self.Rain + self.Snow_melt) * self.fr
 
-    def percolation(self, excess_water):
+    def percolation(self, excess_water) -> None:
         self.Percol = excess_water
 
-    def update_soil_moisture(self):
+    def update_soil_moisture(self) -> None:
         """This function implements the water dynamics in the soil bucket.
         
         Process:
@@ -196,21 +213,21 @@ class BucketModel:
                 potential_soil_water_content, 0
             )
 
-    def groundwater_runoff(self):
+    def groundwater_runoff(self) -> None:
         """Compute groundwater runoff with the linear reservoir concept.
         
         Bonus quiz for exam preparation :) : What is the minimal value of rg?
         """
         self.Q_gw = self.S_gw / self.rg
 
-    def update_groundwater_storage(self):
+    def update_groundwater_storage(self) -> None:
         """Update groundwater storage based on groundwater runoff."""
         self.S_gw += self.Percol - self.Q_gw
 
         if self.S_gw < 0:
             self.S_gw = 0
 
-    def reset_variables(self):
+    def reset_variables(self) -> None:
         """Reset the state variables to their initial values."""
         self.Precip = 0
         self.Rain = 0
@@ -251,6 +268,7 @@ class BucketModel:
             self.T_min = row['T_min']
 
             # Model execution steps
+            self.gauge_adjustment(self.Precip)
             self.adjust_temperature()
             self.partition_precipitation()
             self.compute_snow_melt()
@@ -269,7 +287,7 @@ class BucketModel:
         # Update column names to include the units
         return results_df
     
-    def update_parameters(self, parameters: dict):
+    def update_parameters(self, parameters: dict) -> None:
         """This function updates the model parameters. It becomes useful when we want to update the model with the optimised parameters."""
         
         for key, value in parameters.items():
