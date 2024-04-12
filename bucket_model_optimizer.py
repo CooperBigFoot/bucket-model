@@ -28,7 +28,20 @@ class BucketModelOptimizer:
         rmse_value = np.sqrt(mse_value)
         return rmse_value
 
-    def set_options(self, method: str, bounds: dict):
+
+    def set_options(self, method: str, bounds: dict) -> None:
+        """
+        This method sets the optimization method and bounds for the calibration.
+
+        Parameters:
+        method (str): The optimization method to use. Can be either 'local' or 'global'.
+        bounds (dict): A dictionary containing the lower and upper bounds for each parameter.
+        """
+        possible_methods = ['local', 'global']
+
+        if method not in possible_methods:
+            raise ValueError(f"Method must be one of {possible_methods}")
+        
         self.method = method
         self.bounds = bounds
 
