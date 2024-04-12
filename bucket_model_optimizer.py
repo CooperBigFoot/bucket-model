@@ -28,7 +28,6 @@ class BucketModelOptimizer:
         rmse_value = np.sqrt(mse_value)
         return rmse_value
 
-
     def set_options(self, method: str, bounds: dict) -> None:
         """
         This method sets the optimization method and bounds for the calibration.
@@ -54,8 +53,7 @@ class BucketModelOptimizer:
         mapped to the model's parameters.
         """
         # Map the params array to the model's parameters
-        param_dict = {key: value for key,
-                      value in zip(self.bounds.keys(), params)}
+        param_dict = {key: value for key, value in zip(self.bounds.keys(), params)}
         self.model.update_parameters(param_dict)
 
         observed_Q = self.training_data['Q']
@@ -96,7 +94,7 @@ class BucketModelOptimizer:
                 bounds=bounds_list
             )
 
-            optimal_param_list = result.x
+            optimal_param_list = [round(param, 2) for param in result.x]
             calibrated_parameters = create_param_dict(self.bounds.keys(), optimal_param_list)
 
             return calibrated_parameters
