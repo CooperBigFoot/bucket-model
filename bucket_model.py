@@ -9,7 +9,7 @@ class BucketModel:
     S_max : float # max soil water storage
     fr : float # fraction of impermeable area at soil saturation 
     rg : float # mean residence time of water in grondwater
-    gauge_adj : float # parameter to adjust for undercatch by rain gauge
+    gauge_adj : float # parameter to adjust for undercatch by rain gauge. Fractional value
 
     S : float = field(default=10, init=False, repr=False) # soil water content. Initial condition can be changed
     S_gw : float = field(default = 100, init=False, repr=False) # groundwater storage. Initial condition can be changed

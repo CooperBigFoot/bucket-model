@@ -65,7 +65,7 @@ class BucketModelOptimizer:
 
     def calibrate(self) -> dict:
         """
-        This method optimizes the model's parameters using the method and bounds
+        This method calibrates the model's parameters using the method and bounds
         specified in the set_options method. The method can be either 'local' or 'global'.
 
         Returns:

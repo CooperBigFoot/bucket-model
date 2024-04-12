@@ -72,12 +72,12 @@ def plot_water_balance(results: pd.DataFrame, title: str = '', output_destinatio
         fig.savefig(output_destination, dpi=300, bbox_inches='tight')
 
 
-def plot_Q_Q(results: pd.DataFrame, validation: pd.DataFrame, title: str = '', output_destination: str = '', color: str = '#007A9A', figsize: tuple[int, int] = (6, 6), fontsize: int = 12, line: bool = True, kde: bool = True, cmap: str = 'rainbow') -> None:
+def plot_Q_Q(results: pd.DataFrame, observed: pd.DataFrame, title: str = '', output_destination: str = '', color: str = '#007A9A', figsize: tuple[int, int] = (6, 6), fontsize: int = 12, line: bool = True, kde: bool = True, cmap: str = 'rainbow') -> None:
     """This function plots the observed vs simulated total runoff (Q) values.
     
     Parameters:
     - results (pd.DataFrame): The results from the model run
-    - validation (pd.DataFrame): The validation data. Should contain the following column: 'Q' for the observed runoff
+    - observed (pd.DataFrame): The observed data. Should contain the following column: 'Q' for the observed runoff
     - title (str): The title of the plot, if empty, no title will be shown
     - output_destination (str): The path to the output file, if empty, the plot will not be saved
     - color (str): The color of the plot, default is '#007A9A' (a nice blue color)
@@ -99,16 +99,16 @@ def plot_Q_Q(results: pd.DataFrame, validation: pd.DataFrame, title: str = '', o
     fig, ax = plt.subplots(figsize=figsize)
 
     if kde: # If you choose to use the kde, the points will be colored based on the number of points in that area
-        xy = np.vstack([results_filtered['Total_Runoff'], validation['Q']])
+        xy = np.vstack([results_filtered['Total_Runoff'], observed['Q']])
         z = gaussian_kde(xy)(xy)
-        sns.scatterplot(x=results_filtered['Total_Runoff'], y=validation['Q'], ax=ax, c=z, s=30, cmap=cmap, edgecolor='none')
+        sns.scatterplot(x=results_filtered['Total_Runoff'], y=observed['Q'], ax=ax, c=z, s=30, cmap=cmap, edgecolor='none')
 
     else: # If you choose not to use the kde, the points will be colored based on the color parameter
-        sns.scatterplot(x=results_filtered['Total_Runoff'], y=validation['Q'], ax=ax, color=color, s=30, edgecolor='none')
+        sns.scatterplot(x=results_filtered['Total_Runoff'], y=observed['Q'], ax=ax, color=color, s=30, edgecolor='none')
 
     if line:
-        min_value = min(results_filtered['Total_Runoff'].min(), validation['Q'].min())
-        max_value = max(results_filtered['Total_Runoff'].max(), validation['Q'].max())
+        min_value = min(results_filtered['Total_Runoff'].min(), observed['Q'].min())
+        max_value = max(results_filtered['Total_Runoff'].max(), observed['Q'].max())
 
         ax.plot([min_value, max_value], [min_value, max_value], color='black', linestyle='--')
 
@@ -129,12 +129,12 @@ def plot_Q_Q(results: pd.DataFrame, validation: pd.DataFrame, title: str = '', o
     if output_destination:
         fig.savefig(output_destination, dpi=300, bbox_inches='tight')
 
-def plot_ECDF(results: pd.DataFrame, validation: pd.DataFrame, title: str = '', output_destination: str = '', palette: list[str, str] = ['#007A9A', '#9FFFCB'], figsize: tuple[int, int] = (6, 6), fontsize: int = 12) -> None:
+def plot_ECDF(results: pd.DataFrame, observed: pd.DataFrame, title: str = '', output_destination: str = '', palette: list[str, str] = ['#007A9A', '#9FFFCB'], figsize: tuple[int, int] = (6, 6), fontsize: int = 12) -> None:
     """This function plots the empirical cumulative distribution function (ECDF) of the observed and simulated total runoff (Q) values.
     
     Parameters:
     - results (pd.DataFrame): The results from the model run
-    - validation (pd.DataFrame): The validation data. Should contain the following column: 'Q' for the observed runoff
+    - observed (pd.DataFrame): The observed data. Should contain the following column: 'Q' for the observed runoff
     - title (str): The title of the plot, if empty, no title will be shown
     - output_destination (str): The path to the output file, if empty, the plot will not be saved
     - palette (list): The color palette to use for the plot, default is ['#007A9A', '#25A18E']
@@ -153,7 +153,7 @@ def plot_ECDF(results: pd.DataFrame, validation: pd.DataFrame, title: str = '', 
 
     # Plot the ECDF of the observed and simulated total runoff
     sns.ecdfplot(data=results_filtered['Total_Runoff'], ax=ax, color=palette[0], label='Simulated total runoff')
-    sns.ecdfplot(data=validation['Q'], ax=ax, color=palette[1], label='Observed total runoff')
+    sns.ecdfplot(data=observed['Q'], ax=ax, color=palette[1], label='Observed total runoff')
 
     # Some more style settings. I recommend keeping this
     ax.set_xlabel('Total runoff [mm/d]', fontsize=fontsize)
@@ -171,12 +171,12 @@ def plot_ECDF(results: pd.DataFrame, validation: pd.DataFrame, title: str = '', 
     if output_destination:
         fig.savefig(output_destination, dpi=300, bbox_inches='tight')
 
-def plot_KDE(results: pd.DataFrame, validation: pd.DataFrame, title: str = '', output_destination: str = '', palette: list[str, str] = ['#007A9A', '#25A18E'], figsize: tuple[int, int] = (6, 6), fontsize: int = 12, fill: bool = True) -> None:
+def plot_KDE(results: pd.DataFrame, observed: pd.DataFrame, title: str = '', output_destination: str = '', palette: list[str, str] = ['#007A9A', '#25A18E'], figsize: tuple[int, int] = (6, 6), fontsize: int = 12, fill: bool = True) -> None:
     """This function plots the kernel density estimate (KDE) of the observed and simulated total runoff (Q) values.
     
     Parameters:
     - results (pd.DataFrame): The results from the model run
-    - validation (pd.DataFrame): The validation data. Should contain the following column: 'Q' for the observed runoff
+    - observed (pd.DataFrame): The observed data. Should contain the following column: 'Q' for the observed runoff
     - title (str): The title of the plot, if empty, no title will be shown
     - output_destination (str): The path to the output file, if empty, the plot will not be saved
     - palette (list): The color palette to use for the plot, default is ['#007A9A', '#25A18E']
@@ -196,7 +196,7 @@ def plot_KDE(results: pd.DataFrame, validation: pd.DataFrame, title: str = '', o
 
     # Plot the KDE of the observed and simulated total runoff
     sns.kdeplot(data=results_filtered['Total_Runoff'], ax=ax, color=palette[0], label='Simulated total runoff', fill=fill)
-    sns.kdeplot(data=validation['Q'], ax=ax, color=palette[1], label='Observed total runoff', fill=fill)
+    sns.kdeplot(data=observed['Q'], ax=ax, color=palette[1], label='Observed total runoff', fill=fill)
 
     # Some more style settings. I recommend keeping this
     ax.set_xlabel('Total runoff [mm/d]', fontsize=fontsize)
@@ -309,12 +309,12 @@ def plot_monthly_boxplot(results: pd.DataFrame, title: str = '', output_destinat
         fig.savefig(output_destination, dpi=300, bbox_inches='tight')
 
 
-def plot_timeseries(results: pd.DataFrame, validation: pd.DataFrame, start_year: str, end_year: str, monthly: bool = False, title: str = '', output_destination: str = '', figsize: tuple[int, int] = (10, 6), fontsize: int = 12, palette: list[str, str] = ['#007A9A', '#25A18E']) -> None:
+def plot_timeseries(results: pd.DataFrame, observed: pd.DataFrame, start_year: str, end_year: str, monthly: bool = False, title: str = '', output_destination: str = '', figsize: tuple[int, int] = (10, 6), fontsize: int = 12, palette: list[str, str] = ['#007A9A', '#25A18E']) -> None:
     """This function plots the timeseries of the observed and simulated total runoff (Q) values.
 
     Parameters:
     - results (pd.DataFrame): The results from the model run
-    - validation (pd.DataFrame): The validation data. Should contain the following column: 'Q' for the observed runoff
+    - observed (pd.DataFrame): The observed data. Should contain the following column: 'Q' for the observed runoff
     - start_year (str): The start date of the plot
     - end_year (str): The end date of the plot. The plot will be inclusive of this date
     - monthly (bool): If True, the plot will be monthly, default is False, which means the plot will be daily
@@ -332,18 +332,18 @@ def plot_timeseries(results: pd.DataFrame, validation: pd.DataFrame, start_year:
     results_filtered = results_filtered[start_year:end_year]
     results_filtered['Total_Runoff'] = results_filtered['Q_s'] + results_filtered['Q_gw']
 
-    validation_filtered = validation.copy()
-    validation_filtered = validation_filtered[start_year:end_year]
+    observed_filtered = observed.copy()
+    observed_filtered = observed_filtered[start_year:end_year]
 
     fig, ax = plt.subplots(figsize=figsize)
 
     # Resample the data if monthly is True
     if monthly:
         results_filtered = results_filtered.resample('M').sum()
-        validation_filtered = validation_filtered.resample('M').sum()
+        observed_filtered = observed_filtered.resample('M').sum()
 
     sns.lineplot(data=results_filtered['Total_Runoff'], ax=ax, color=palette[0], label='Simulated total runoff', alpha=0.7)
-    sns.lineplot(data=validation_filtered['Q'], ax=ax, color=palette[1], label='Observed total runoff', alpha=0.7)
+    sns.lineplot(data=observed_filtered['Q'], ax=ax, color=palette[1], label='Observed total runoff', alpha=0.7)
 
     ax.set_xlabel('')
 
