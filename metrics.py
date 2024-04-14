@@ -47,7 +47,7 @@ def nse(simulated_Q: pd.DataFrame, observed_Q: pd.Series) -> float:
     denominator = np.sum((observed_Q - np.mean(observed_Q)) ** 2)
     nse_value = 1 - (numerator / denominator)
 
-    return nse_value
+    return nse_value 
 
 def log_nse(simulated_Q: pd.DataFrame, observed_Q: pd.Series) -> float:
     """Calculate the Log Nash-Sutcliffe Efficiency (Log-NSE) between observed and simulated Q values.
@@ -59,11 +59,11 @@ def log_nse(simulated_Q: pd.DataFrame, observed_Q: pd.Series) -> float:
     Returns:
     float: The Log-NSE value.
     """
-    
+
     log_observed_Q = np.log(observed_Q + 1) # Add 1 to avoid log(0)
     log_simulated_Q = np.log(simulated_Q + 1)
 
-    return nse(log_simulated_Q, log_observed_Q)
+    return nse(log_simulated_Q, log_observed_Q) 
 
 def kge(simulated_Q: pd.DataFrame, observed_Q: pd.Series) -> float:
     """Calculate the Kling-Gupta Efficiency (KGE) between observed and simulated Q values.
@@ -82,7 +82,7 @@ def kge(simulated_Q: pd.DataFrame, observed_Q: pd.Series) -> float:
     beta = np.mean(simulated_Q) / np.mean(observed_Q)
     kge_value = 1 - np.sqrt((r - 1) ** 2 + (alpha - 1) ** 2 + (beta - 1) ** 2)
 
-    return kge_value
+    return kge_value 
 
 def pbias(simulated_Q: pd.DataFrame, observed_Q: pd.Series) -> float:
     """Calculate the Percent Bias (PBIAS) between observed and simulated Q values.
@@ -94,7 +94,7 @@ def pbias(simulated_Q: pd.DataFrame, observed_Q: pd.Series) -> float:
     Returns:
     float: The PBIAS value.
     """
-    pbias_value = 100 * np.sum(simulated_Q - observed_Q) / np.sum(observed_Q)
+    pbias_value = 100 * np.sum(observed_Q - simulated_Q) / np.sum(observed_Q)
 
     return pbias_value
 
