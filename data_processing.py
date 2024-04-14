@@ -9,7 +9,7 @@ def preprocess_data(path_to_file: str, catchment_area: float, output_destination
     - catchment_area (float): The catchment area in km^2
   """
 
-    precipitation = pd.read_csv(path_to_file, sep='\s+', skiprows=1, header=0)
+    precipitation = pd.read_csv(path_to_file, sep=r'\s+', skiprows=1, header=0)
 
     # Create a DatetimeIndex starting from October 1st, 1985
     date_range = pd.date_range(start='1985-10-01', periods=len(precipitation), freq='D')
