@@ -364,6 +364,81 @@ def plot_timeseries(results: pd.DataFrame, observed: pd.DataFrame, start_year: s
     if output_destination:
         fig.savefig(output_destination, dpi=300, bbox_inches='tight')
 
+def plot_parameter_kde(results: pd.DataFrame, bounds: dict, output_destination: str = None, figsize: tuple[int, int] = (10, 6), fontsize: int = 12) -> None:
+    """This function plots the histogram of the parameters.
+    
+    Parameters:
+    - results (pd.DataFrame): The results from the model run
+    - bounds (dict): The bounds of the parameters. They are used to set the x-axis limits
+    - output_destination (str): The path to the output file
+    - figsize (tuple): The size of the figure, default is (10, 6)
+    - fontsize (int): The fontsize of the plot, default is 12
+    """
+
+    # Some style settings, this is what I like, but feel free to change it
+    sns.set_context('paper')
+
+    # Prepare the data
+    results_filtered = results.copy()
+
+    fig = plt.figure(figsize=figsize)
+    layout = (2, 3) 
+
+    ax_k = plt.subplot2grid(layout, (0, 0))
+    ax_S_max = plt.subplot2grid(layout, (0, 1))
+    ax_fr = plt.subplot2grid(layout, (0, 2))
+    ax_rg = plt.subplot2grid(layout, (1, 0))
+    ax_gauge_adj = plt.subplot2grid(layout, (1, 1))
+
+    bins = int(np.sqrt(len(results_filtered)))
+
+    sns.histplot(data=results_filtered['k'], ax=ax_k, color='#007A9A', bins=bins)
+    sns.histplot(data=results_filtered['S_max'], ax=ax_S_max, color='#007A9A', bins=bins)
+    sns.histplot(data=results_filtered['fr'], ax=ax_fr, color='#007A9A', bins=bins)
+    sns.histplot(data=results_filtered['rg'], ax=ax_rg, color='#007A9A', bins=bins)
+    sns.histplot(data=results_filtered['gauge_adj'], ax=ax_gauge_adj, color='#007A9A', bins=bins)
+
+    ax_k.set_xlabel('k', fontsize=fontsize)
+    ax_k.set_ylabel('Density', fontsize=fontsize)
+    ax_k.tick_params(which='both', length=10, width=2, labelsize=fontsize)
+    ax_k.grid(color='gray', linestyle='--', linewidth=0.5, alpha=0.5)
+    ax_k.set_xlim(bounds['k'])
+
+    ax_S_max.set_xlabel('S$_{max}$', fontsize=fontsize)
+    ax_S_max.set_ylabel('Density', fontsize=fontsize)
+    ax_S_max.tick_params(which='both', length=10, width=2, labelsize=fontsize)
+    ax_S_max.grid(color='gray', linestyle='--', linewidth=0.5, alpha=0.5)
+    ax_S_max.set_xlim(bounds['S_max'])
+
+    ax_fr.set_xlabel('fr', fontsize=fontsize)
+    ax_fr.set_ylabel('Density', fontsize=fontsize)
+    ax_fr.tick_params(which='both', length=10, width=2, labelsize=fontsize)
+    ax_fr.grid(color='gray', linestyle='--', linewidth=0.5, alpha=0.5)
+    ax_fr.set_xlim(bounds['fr'])
+
+    ax_rg.set_xlabel('rg', fontsize=fontsize)
+    ax_rg.set_ylabel('Density', fontsize=fontsize)
+    ax_rg.tick_params(which='both', length=10, width=2, labelsize=fontsize)
+    ax_rg.grid(color='gray', linestyle='--', linewidth=0.5, alpha=0.5)
+    ax_rg.set_xlim(bounds['rg'])
+
+    ax_gauge_adj.set_xlabel('gauge_adj', fontsize=fontsize)
+    ax_gauge_adj.set_ylabel('Density', fontsize=fontsize)
+    ax_gauge_adj.tick_params(which='both', length=10, width=2, labelsize=fontsize)
+    ax_gauge_adj.grid(color='gray', linestyle='--', linewidth=0.5, alpha=0.5)
+    ax_gauge_adj.set_xlim(bounds['gauge_adj'])
+
+    plt.tight_layout()
+    sns.despine()
+
+    if output_destination:
+        fig.savefig(output_destination, dpi=300, bbox_inches='tight')
+
+
+
+
+
+
 
 
 

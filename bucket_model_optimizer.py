@@ -3,40 +3,78 @@ from scipy.optimize import minimize, basinhopping
 import numpy as np
 from dataclasses import dataclass, field
 from bucket_model import BucketModel
+from metrics import rmse, nse, log_nse, mae, kge, pbias
+import concurrent.futures
+from typing import Union
 
+# If you want to add a new metric, you need to implement it in metrics.py and add it to the GOF_DICT dictionary.
+GOF_DICT = {
+    'rmse': rmse,
+    'nse': nse,
+    'log_nse': log_nse,
+    'mae': mae,
+    'kge': kge,
+    'pbias': pbias
+}
 
 @dataclass
-class BucketModelOptimizer:
+class BucketModelOptimizer():
     model: BucketModel
     training_data: pd.DataFrame
+    validation_data: pd.DataFrame = None
     method: str = field(init=False, repr=False)
     bounds: dict = field(init=False, repr=False)
+    folds: int = field(init=False, repr=False)
 
-    # You should define some other Goodness of Fit metrics here too (e.g. log_nse, mae, pbias). I only included rmse as an example.
-    def rmse(self, simulated_Q: pd.DataFrame, observed_Q: pd.Series) -> float:
-        """Calculate the Root Mean Squared Error (RMSE) between observed and simulated Q values.
-
+    @staticmethod
+    def create_param_dict(keys, values):
+            """This is a helper function that creates a dictionary from two lists."""
+            return {key: value for key, value in zip(keys, values)}
+    
+ 
+    def get_best_parameters(self, results: pd.DataFrame) -> dict:
+        """This function takes a DataFrame containing the results of the n-folds calibration and returns the one that performs best.
+        
         Parameters:
-        observed_Q (np.ndarray): Array of observed Q values.
-        simulated_Q (np.ndarray): Array of simulated Q values.
-
+        - results (pd.DataFrame): A DataFrame containing the results of the n-folds calibration.
+        
         Returns:
-        float: The RMSE value.
+        - dict: A dictionary containing the best parameters.
         """
-        squared_errors = (observed_Q - simulated_Q) ** 2
-        mse_value = np.mean(squared_errors)
-        rmse_value = np.sqrt(mse_value)
-        return rmse_value
+        best_rmse = float('inf')
+        best_parameters = None
 
-    def set_options(self, method: str, bounds: dict) -> None:
+        for index, row in results.iterrows():
+            # Convert row to parameter dictionary
+            params = row.to_dict()
+            
+            self.model.update_parameters(params)
+            
+            simulated_results = self.model.run(self.training_data)
+            
+            simulated_Q = simulated_results['Q_s'] + simulated_results['Q_gw']
+            observed_Q = self.training_data['Q']
+            
+            # Calculate RMSE
+            current_rmse = rmse(simulated_Q, observed_Q)
+            
+            # Check if the current RMSE is the best one
+            if current_rmse < best_rmse:
+                best_rmse = current_rmse
+                best_parameters = params
+
+        return best_parameters
+
+    # TODO: Add option two run model from N initial conditions and return most common parameters and histogram of parameter distributions
+    def set_options(self, method: str, bounds: dict, folds: int = 0) -> None:
         """
         This method sets the optimization method and bounds for the calibration.
 
         Parameters:
-        method (str): The optimization method to use. Can be either 'local' or 'global'.
-        bounds (dict): A dictionary containing the lower and upper bounds for each parameter.
+        - method (str): The optimization method to use. Can be either 'local' or 'global'.
+        - bounds (dict): A dictionary containing the lower and upper bounds for each parameter.
         """
-        possible_methods = ['local', 'global']
+        possible_methods = ['local', 'n-folds', 'global']
 
         if method not in possible_methods:
             raise ValueError(f"Method must be one of {possible_methods}")
@@ -44,72 +82,140 @@ class BucketModelOptimizer:
         self.method = method
         self.bounds = bounds
 
-    def _objective_function(self, params: np.ndarray) -> float:
+        if method == 'n-folds' and folds == 0:
+            raise ValueError("You must provide the number of folds for the n-folds method.")
+        self.folds = folds
+
+    def _objective_function(self, params: list) -> float:
         """
-        This is a private method used to calculate the objective function, 
-        which in this case is the RMSE between observed and simulated Q values.
+        This is a helper function that calculates the objective function for the optimization algorithm.
 
-        The params array contains the optimization variables, which need to be
-        mapped to the model's parameters.
-        """
-        # Map the params array to the model's parameters
-        param_dict = {key: value for key, value in zip(self.bounds.keys(), params)}
-        self.model.update_parameters(param_dict)
-
-        observed_Q = self.training_data['Q']
-        data = self.training_data.drop(columns='Q', axis=1)
-
-        model_run = self.model.run(data)
-        simulated_Q = model_run['Q_s'] + model_run['Q_gw']
-        return self.rmse(simulated_Q, observed_Q)
-
-    def calibrate(self) -> dict:
-        """
-        This method calibrates the model's parameters using the method and bounds
-        specified in the set_options method. The method can be either 'local' or 'global'.
+        Parameters:
+        - params (list): A list of parameters to calibrate.
 
         Returns:
-        dict: A dictionary containing the optimal parameters.
+        float: The value of the objective function.
         """
 
-        def create_param_dict(keys, values):
-            """This is a helper function that creates a dictionary from two lists."""
+        # Create a dictionary from the parameter list. Look like this {'parameter_name': value, ...}
+        param_dict = BucketModelOptimizer.create_param_dict(self.bounds.keys(), params)
 
-            return {key: value for key, value in zip(keys, values)}
+        self.model.update_parameters(param_dict)
+
+        results = self.model.run(self.training_data)
+
+        simulated_Q = results['Q_s'] + results['Q_gw']
+
+        # Objective function is RMSE, minimized. Change metric if needed, adjust sign accordingly.
+        objective_function = rmse(simulated_Q, self.training_data['Q']) 
+
+        return objective_function
+    
+    def single_fold_calibration(self, bounds_list: list[tuple], initial_guess: list[float] = None) -> list[float]:
+        """Performs a single fold calibration using random initial guesses.
         
+        Parameters:
+        - bounds_list (list[tuple]): A list of tuples containing the lower and upper bounds for each parameter.
+        - initial_guess (list[float]): A list of initial guesses for the parameters"""
+
+        if initial_guess is None:
+            initial_guess = [round(np.random.uniform(lower, upper), 3) for lower, upper in bounds_list] # Round to 3 decimal places
+
+        options = {
+                'eps': 1e-3, 
+            }
+        result = minimize(
+            lambda params: self._objective_function(params),
+            initial_guess,
+            method='L-BFGS-B', # Have a look at the doc for more methods: https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.minimize.html
+            bounds=bounds_list,
+            options=options
+        )
+        return [round(param, 3) for param in result.x]
+
+
+    def calibrate(self, initial_guess : list[float] = None) -> tuple[dict, pd.DataFrame]:
+        """
+        This method calibrates the model's parameters using the method and bounds
+        specified in the set_options method. The method can be either 'local', 'global' or 'n-folds'.
+
+        Parameters:
+        - initial_guess (list[float]): A list of initial guesses for the parameters. If no initial guesses are provided, uniform random values are sampled from the bounds.
+
+        Returns:
+        - tuple[dict, pd.DataFrame]: A tuple containing the calibrated parameters and the results of the n-folds calibration. If the method is 'local' or 'global', the second element is None.
+        """
+
         # This is a list of tuples. Each tuple contains the lower and upper bounds for each parameter.
         bounds_list = list(self.bounds.values())
 
         # Randomly generate an initial guess for each parameter.
-        initial_guess = [np.random.uniform(lower, upper) for lower, upper in bounds_list]
-
         if self.method == 'local':
-            method = 'L-BFGS-B'  # Have a look at the doc for more methods: https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.minimize.html
 
-            # Use a lambda to pass 'self' to the objective function
-            result = minimize(
-                lambda params: self._objective_function(params),
-                initial_guess,
-                method=method,
-                bounds=bounds_list
-            )
+            optimal_param_list = self.single_fold_calibration(bounds_list, initial_guess)
+            calibrated_parameters = BucketModelOptimizer.create_param_dict(self.bounds.keys(), optimal_param_list)
 
-            optimal_param_list = [round(param, 2) for param in result.x]
-            calibrated_parameters = create_param_dict(self.bounds.keys(), optimal_param_list)
+            self.model.update_parameters(calibrated_parameters)
 
-            return calibrated_parameters
+            return calibrated_parameters, None
         
-        elif self.method == 'global':
-            # The way basinhopping works, is that it find a bunch of local minima and then chooses the best one. Hence the name 'basinhopping'. 
-            # The method is slow (many hours). I do not recommend using it unless you have a good reason to do so. 
-            # You can try to tune the parameters of the method to make it faster: https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.basinhopping.html
-            result = basinhopping(
-                lambda params: self._objective_function(params),
-                initial_guess,
-                minimizer_kwargs={'method': 'L-BFGS-B', 'bounds': bounds_list}
-            )
+        elif self.method == 'n-folds':
+            with concurrent.futures.ProcessPoolExecutor() as executor:
+                results = list(executor.map(self.single_fold_calibration, [bounds_list] * self.folds))
 
-            optimal_param_list = result.x
-            calibrated_parameters = create_param_dict(self.bounds.keys(), optimal_param_list)
+            columns = list(self.bounds.keys())
+            results = pd.DataFrame(results, columns=columns)
+            print(results)
 
-            return calibrated_parameters
+            calibrated_parameters = self.get_best_parameters(results)
+
+            return calibrated_parameters, results
+
+        # # TODO: Get rid of this?
+        # elif self.method == 'global':
+        #     # The way basinhopping works, is that it find a bunch of local minima and then chooses the best one. Hence the name 'basinhopping'. 
+        #     # The method is slow (many hours). I do not recommend using it unless you have a good reason to do so. 
+        #     # You can try to tune the parameters of the method to make it faster: https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.basinhopping.html
+        #     result = basinhopping(
+        #         lambda params: self._objective_function(params),
+        #         initial_guess,
+        #         minimizer_kwargs={'method': 'L-BFGS-B', 'bounds': bounds_list}
+        #     )
+
+        #     optimal_param_list = [round(param, 3) for param in result.x]
+        #     calibrated_parameters = BucketModelOptimizer.create_param_dict(self.bounds.keys(), optimal_param_list)
+
+        # # Update the model's parameters with the calibrated parameters. This is important for scoring the model.
+        # self.model.update_parameters(calibrated_parameters)
+
+        # return calibrated_parameters
+
+    def score_model(self, metrics: list[str] = ['rmse']) -> dict:
+        """
+        This function calculates the goodness of fit metrics for a given model.
+
+        Parameters:
+        - metrics (list(str)): A list of strings containing the names of the metrics to calculate. If no metrics are provided, only RMSE is calculated.
+
+        Returns:
+        - dict: A dictionary containing the scores for the training and validation data.
+        """
+
+        metrics = [metric.lower() for metric in metrics] # Convert all metrics to lowercase
+
+        training_results = self.model.run(self.training_data)
+        simulated_Q = training_results['Q_s'] + training_results['Q_gw']
+        observed_Q = self.training_data['Q']
+        training_score = {metric: round(GOF_DICT[metric](simulated_Q, observed_Q), 3) for metric in metrics}
+
+        scores = {'training': training_score}
+
+        if self.validation_data is not None:
+            validation_results = self.model.run(self.validation_data)
+            simulated_Q = validation_results['Q_s'] + validation_results['Q_gw']
+            observed_Q = self.validation_data['Q']
+            validation_score = {metric: round(GOF_DICT[metric](simulated_Q, observed_Q), 3) for metric in metrics}
+
+            scores['validation'] = validation_score
+
+        return scores

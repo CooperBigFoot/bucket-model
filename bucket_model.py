@@ -1,4 +1,3 @@
-import re
 import pandas as pd
 import numpy as np
 from dataclasses import dataclass, field 
@@ -288,7 +287,7 @@ class BucketModel:
         return results_df
     
     def update_parameters(self, parameters: dict) -> None:
-        """This function updates the model parameters. It becomes useful when we want to update the model with the optimised parameters."""
+        """This function updates the model parameters."""
         
         for key, value in parameters.items():
             setattr(self, key, value)
