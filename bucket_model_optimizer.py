@@ -188,6 +188,9 @@ class BucketModelOptimizer():
                 best_rmse = current_rmse
                 best_parameters = params
 
+        # Update the model's parameters with the best parameters, otherwise the last set of parameters will be used.
+        self.model.update_parameters(best_parameters)
+
         return best_parameters
 
     def score_model(self, metrics: list[str] = ['rmse']) -> dict:
