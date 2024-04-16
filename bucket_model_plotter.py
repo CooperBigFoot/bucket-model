@@ -339,8 +339,8 @@ def plot_timeseries(results: pd.DataFrame, observed: pd.DataFrame, start_year: s
 
     # Resample the data if monthly is True
     if monthly:
-        results_filtered = results_filtered.resample('M').sum()
-        observed_filtered = observed_filtered.resample('M').sum()
+        results_filtered = results_filtered.resample('ME').sum()
+        observed_filtered = observed_filtered.resample('ME').sum()
 
     sns.lineplot(data=results_filtered['Total_Runoff'], ax=ax, color=palette[0], label='Simulated total runoff', alpha=0.7)
     sns.lineplot(data=observed_filtered['Q'], ax=ax, color=palette[1], label='Observed total runoff', alpha=0.7)
@@ -364,22 +364,23 @@ def plot_timeseries(results: pd.DataFrame, observed: pd.DataFrame, start_year: s
     if output_destination:
         fig.savefig(output_destination, dpi=300, bbox_inches='tight')
 
-def plot_parameter_kde(results: pd.DataFrame, bounds: dict, output_destination: str = None, figsize: tuple[int, int] = (10, 6), fontsize: int = 12) -> None:
+def plot_parameter_kde(n_fold_results: pd.DataFrame, bounds: dict, output_destination: str = None, figsize: tuple[int, int] = (10, 6), fontsize: int = 12, plot_type: str = 'histplot') -> None:
     """This function plots the histogram of the parameters.
     
     Parameters:
-    - results (pd.DataFrame): The results from the model run
+    - n_fold_results (pd.DataFrame): The n_fold_results from the model calibration
     - bounds (dict): The bounds of the parameters. They are used to set the x-axis limits
     - output_destination (str): The path to the output file
     - figsize (tuple): The size of the figure, default is (10, 6)
     - fontsize (int): The fontsize of the plot, default is 12
+    - plot_type (str): The type of plot to use. Can be either 'histplot' or 'kdeplot', default is 'histplot'
     """
 
     # Some style settings, this is what I like, but feel free to change it
     sns.set_context('paper')
 
     # Prepare the data
-    results_filtered = results.copy()
+    n_fold_results_filtered = n_fold_results.copy()
 
     fig = plt.figure(figsize=figsize)
     layout = (2, 3) 
@@ -390,13 +391,21 @@ def plot_parameter_kde(results: pd.DataFrame, bounds: dict, output_destination: 
     ax_rg = plt.subplot2grid(layout, (1, 0))
     ax_gauge_adj = plt.subplot2grid(layout, (1, 1))
 
-    bins = int(np.sqrt(len(results_filtered)))
+    if plot_type == 'histplot':
+        bins = int(np.sqrt(len(n_fold_results_filtered)))
 
-    sns.histplot(data=results_filtered['k'], ax=ax_k, color='#007A9A', bins=bins)
-    sns.histplot(data=results_filtered['S_max'], ax=ax_S_max, color='#007A9A', bins=bins)
-    sns.histplot(data=results_filtered['fr'], ax=ax_fr, color='#007A9A', bins=bins)
-    sns.histplot(data=results_filtered['rg'], ax=ax_rg, color='#007A9A', bins=bins)
-    sns.histplot(data=results_filtered['gauge_adj'], ax=ax_gauge_adj, color='#007A9A', bins=bins)
+        sns.histplot(data=n_fold_results_filtered['k'], ax=ax_k, color='#007A9A', bins=bins)
+        sns.histplot(data=n_fold_results_filtered['S_max'], ax=ax_S_max, color='#007A9A', bins=bins)
+        sns.histplot(data=n_fold_results_filtered['fr'], ax=ax_fr, color='#007A9A', bins=bins)
+        sns.histplot(data=n_fold_results_filtered['rg'], ax=ax_rg, color='#007A9A', bins=bins)
+        sns.histplot(data=n_fold_results_filtered['gauge_adj'], ax=ax_gauge_adj, color='#007A9A', bins=bins)
+
+    elif plot_type == 'kdeplot':
+        sns.kdeplot(data=n_fold_results_filtered['k'], ax=ax_k, color='#007A9A', fill=True)
+        sns.kdeplot(data=n_fold_results_filtered['S_max'], ax=ax_S_max, color='#007A9A', fill=True)
+        sns.kdeplot(data=n_fold_results_filtered['fr'], ax=ax_fr, color='#007A9A', fill=True)
+        sns.kdeplot(data=n_fold_results_filtered['rg'], ax=ax_rg, color='#007A9A', fill=True)
+        sns.kdeplot(data=n_fold_results_filtered['gauge_adj'], ax=ax_gauge_adj, color='#007A9A', fill=True)
 
     ax_k.set_xlabel('k', fontsize=fontsize)
     ax_k.set_ylabel('Density', fontsize=fontsize)
@@ -433,19 +442,3 @@ def plot_parameter_kde(results: pd.DataFrame, bounds: dict, output_destination: 
 
     if output_destination:
         fig.savefig(output_destination, dpi=300, bbox_inches='tight')
-
-
-
-
-
-
-
-
-
-
-
-    
-
-
-
-

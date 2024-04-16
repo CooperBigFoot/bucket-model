@@ -22,50 +22,17 @@ class BucketModelOptimizer():
     model: BucketModel
     training_data: pd.DataFrame
     validation_data: pd.DataFrame = None
+
     method: str = field(init=False, repr=False)
     bounds: dict = field(init=False, repr=False)
     folds: int = field(init=False, repr=False)
 
     @staticmethod
     def create_param_dict(keys, values):
-            """This is a helper function that creates a dictionary from two lists."""
-            return {key: value for key, value in zip(keys, values)}
+        """This is a helper function that creates a dictionary from two lists."""
+        return {key: value for key, value in zip(keys, values)}
     
- 
-    def get_best_parameters(self, results: pd.DataFrame) -> dict:
-        """This function takes a DataFrame containing the results of the n-folds calibration and returns the one that performs best.
-        
-        Parameters:
-        - results (pd.DataFrame): A DataFrame containing the results of the n-folds calibration.
-        
-        Returns:
-        - dict: A dictionary containing the best parameters.
-        """
-        best_rmse = float('inf')
-        best_parameters = None
 
-        for index, row in results.iterrows():
-            # Convert row to parameter dictionary
-            params = row.to_dict()
-            
-            self.model.update_parameters(params)
-            
-            simulated_results = self.model.run(self.training_data)
-            
-            simulated_Q = simulated_results['Q_s'] + simulated_results['Q_gw']
-            observed_Q = self.training_data['Q']
-            
-            # Calculate RMSE
-            current_rmse = rmse(simulated_Q, observed_Q)
-            
-            # Check if the current RMSE is the best one
-            if current_rmse < best_rmse:
-                best_rmse = current_rmse
-                best_parameters = params
-
-        return best_parameters
-
-    # TODO: Add option two run model from N initial conditions and return most common parameters and histogram of parameter distributions
     def set_options(self, method: str, bounds: dict, folds: int = 0) -> None:
         """
         This method sets the optimization method and bounds for the calibration.
@@ -161,15 +128,15 @@ class BucketModelOptimizer():
         
         elif self.method == 'n-folds':
             with concurrent.futures.ProcessPoolExecutor() as executor:
-                results = list(executor.map(self.single_fold_calibration, [bounds_list] * self.folds))
+                n_fold_results = list(executor.map(self.single_fold_calibration, [bounds_list] * self.folds))
 
             columns = list(self.bounds.keys())
-            results = pd.DataFrame(results, columns=columns)
-            print(results)
+            n_fold_results = pd.DataFrame(n_fold_results, columns=columns)
+            # print(results)
 
-            calibrated_parameters = self.get_best_parameters(results)
+            calibrated_parameters = self.get_best_parameters(n_fold_results)
 
-            return calibrated_parameters, results
+            return calibrated_parameters, n_fold_results
 
         # # TODO: Get rid of this?
         # elif self.method == 'global':
@@ -189,6 +156,39 @@ class BucketModelOptimizer():
         # self.model.update_parameters(calibrated_parameters)
 
         # return calibrated_parameters
+
+    def get_best_parameters(self, results: pd.DataFrame) -> dict:
+        """This function takes a DataFrame containing the results of the n-folds calibration and returns the one that performs best.
+        
+        Parameters:
+        - results (pd.DataFrame): A DataFrame containing the results of the n-folds calibration.
+        
+        Returns:
+        - dict: A dictionary containing the best parameters.
+        """
+        best_rmse = float('inf')
+        best_parameters = None
+
+        for index, row in results.iterrows():
+            # Convert row to parameter dictionary
+            params = row.to_dict()
+            
+            self.model.update_parameters(params)
+            
+            simulated_results = self.model.run(self.training_data)
+            
+            simulated_Q = simulated_results['Q_s'] + simulated_results['Q_gw']
+            observed_Q = self.training_data['Q']
+            
+            # Calculate RMSE
+            current_rmse = rmse(simulated_Q, observed_Q)
+            
+            # Check if the current RMSE is the best one
+            if current_rmse < best_rmse:
+                best_rmse = current_rmse
+                best_parameters = params
+
+        return best_parameters
 
     def score_model(self, metrics: list[str] = ['rmse']) -> dict:
         """

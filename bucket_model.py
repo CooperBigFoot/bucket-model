@@ -109,7 +109,6 @@ class BucketModel:
             self.Rain = self.Precip * rain_fraction
             self.Snow = self.Precip - self.Rain
 
-    # TODO: Check if the snowmelt is correct
     def compute_snow_melt(self) -> None:
         """Compute snowmelt based on basin temperature.
 
@@ -287,7 +286,10 @@ class BucketModel:
         return results_df
     
     def update_parameters(self, parameters: dict) -> None:
-        """This function updates the model parameters."""
+        """This function updates the model parameters.
+        
+        Parameters:
+        - parameters (dict): A dictionary containing the parameters to update."""
         
         for key, value in parameters.items():
             setattr(self, key, value)
