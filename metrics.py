@@ -84,6 +84,7 @@ def kge(simulated_Q: pd.DataFrame, observed_Q: pd.Series) -> float:
 
     return kge_value 
 
+# TODO: Check correctness of formula
 def pbias(simulated_Q: pd.DataFrame, observed_Q: pd.Series) -> float:
     """Calculate the Percent Bias (PBIAS) between observed and simulated Q values.
 
