@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 from dataclasses import dataclass, field 
+import copy
 
 @dataclass
 class BucketModel:
@@ -289,6 +290,14 @@ class BucketModel:
         
         for key, value in parameters.items():
             setattr(self, key, value)
+
+    def get_parameters(self) -> dict:
+        """This function returns the model parameters."""
+        return self.__dict__
+    
+    def copy(self) -> 'BucketModel':
+        """This function returns a copy of the model."""
+        return copy.deepcopy(self)
 
         
 
