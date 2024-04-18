@@ -82,13 +82,9 @@ class BucketModel:
         self.T_max += LR_DELTA_H
         self.T_min += LR_DELTA_H
 
-    def gauge_adjustment(self, precipitation) -> None:
-        """Adjust for undercatch by the rain gauge.
-
-        Parameters:
-        - precipitation: Precipitation value to adjust.
-        """
-        self.Precip = precipitation * (1 + self.gauge_adj)
+    def gauge_adjustment(self) -> None:
+        """Adjust for undercatch by the rain gauge."""
+        self.Precip = self.Precip * (1 + self.gauge_adj)
 
     def partition_precipitation(self) -> None:
         """Partition precipitation into rainfall and snowfall based on temperature thresholds.
@@ -266,7 +262,7 @@ class BucketModel:
             self.T_min = row['T_min']
 
             # Model execution steps
-            self.gauge_adjustment(self.Precip)
+            self.gauge_adjustment()
             self.adjust_temperature()
             self.partition_precipitation()
             self.compute_snow_melt()

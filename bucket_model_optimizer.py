@@ -61,7 +61,7 @@ class BucketModelOptimizer():
         - params (list): A list of parameters to calibrate.
 
         Returns:
-        float: The value of the objective function.
+        - float: The value of the objective function.
         """
 
         # Create a dictionary from the parameter list. Look like this {'parameter_name': value, ...}
