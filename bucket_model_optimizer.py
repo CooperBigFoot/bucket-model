@@ -6,6 +6,8 @@ from bucket_model import BucketModel
 from metrics import rmse, nse, log_nse, mae, kge, pbias
 import concurrent.futures
 from typing import Union
+import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
 
 # If you want to add a new metric, you need to implement it in metrics.py and add it to the GOF_DICT dictionary.
 GOF_DICT = {
@@ -63,13 +65,13 @@ class BucketModelOptimizer():
         Returns:
         - float: The value of the objective function.
         """
-
+        model_copy = self.model.copy()
         # Create a dictionary from the parameter list. Look like this {'parameter_name': value, ...}
         param_dict = BucketModelOptimizer.create_param_dict(self.bounds.keys(), params)
 
-        self.model.update_parameters(param_dict)
+        model_copy.update_parameters(param_dict)
 
-        results = self.model.run(self.training_data)
+        results = model_copy.run(self.training_data)
 
         simulated_Q = results['Q_s'] + results['Q_gw']
 
@@ -222,3 +224,53 @@ class BucketModelOptimizer():
             scores['validation'] = validation_score
 
         return scores
+    
+    # TODO: Add customization options after meeting with team
+    def plot_of_surface(self, param1: str, param2: str, n_points: int) -> None:
+        """
+        This function creates a 3D plot of the objective function surface for two parameters.
+
+        Parameters:
+        - param1 (str): The name of the first parameter.
+        - param2 (str): The name of the second parameter.
+        - n_points (int): The number of points to sample for each parameter.
+        """
+        params = self.model.get_parameters().copy()
+        print(params)
+        param1_values = np.linspace(self.bounds[param1][0], self.bounds[param1][1], n_points)
+        param2_values = np.linspace(self.bounds[param2][0], self.bounds[param2][1], n_points)
+        PARAM1, PARAM2 = np.meshgrid(param1_values, param2_values)
+
+        goal_matrix = np.zeros(PARAM1.shape)
+
+        # Compute the objective function for each combination of param1 and param2
+        for i in range(n_points):
+            for j in range(n_points):
+                params_copy = params.copy()
+                params_copy[param1] = PARAM1[i, j]
+                params_copy[param2] = PARAM2[i, j]
+                goal_matrix[i, j] = self._objective_function(list(params_copy.values()))
+
+        # Plotting the surface
+        plt.figure(figsize=(10, 7))
+        levels = np.linspace(np.min(goal_matrix), np.max(goal_matrix), 20)
+
+        CP = plt.contour(PARAM1, PARAM2, goal_matrix, levels=levels, cmap='viridis')
+        plt.clabel(CP, inline=True, fontsize=10)
+
+        plt.xlabel(f'{param1} (mm/d/°C)')
+        plt.ylabel(f'{param2} (days)')
+
+        print(params)
+
+        plt.scatter(params[param1], params[param2], color='red', label='Optimal Point')
+        plt.legend()
+        plt.show()
+
+
+
+
+ 
+
+
+
