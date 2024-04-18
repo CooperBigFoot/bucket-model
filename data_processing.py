@@ -12,7 +12,7 @@ def preprocess_data(path_to_file: str, catchment_area: float, output_destination
     precipitation = pd.read_csv(path_to_file, sep=r'\s+', skiprows=1, header=0)
 
     # Create a DatetimeIndex starting from October 1st, 1985
-    date_range = pd.date_range(start='1985-10-01', periods=len(precipitation), freq='D')
+    date_range = pd.date_range(start='1986-01-01', periods=len(precipitation), freq='D')
 
     # Set the DatetimeIndex as the new index of the DataFrame
     precipitation.set_index(date_range, inplace=True)
@@ -24,8 +24,8 @@ def preprocess_data(path_to_file: str, catchment_area: float, output_destination
     precipitation.index = pd.to_datetime(precipitation.index)
     precipitation = precipitation.apply(pd.to_numeric, errors='coerce')
 
-    # Only keep data from 1986  to 2000
-    precipitation = precipitation.loc['1986':'2000']
+    # Only keep data from 1986  to end of 1999
+    precipitation = precipitation.loc['1986':'1999']
 
     precipitation['Q'] = (precipitation['Q'] * 60 * 60 * 24) / catchment_area / 1000 # Convert m^3/s to mm/day
     
