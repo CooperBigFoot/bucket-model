@@ -228,7 +228,7 @@ class BucketModelOptimizer():
     # TODO: Add customization options after meeting with team
     def plot_of_surface(self, param1: str, param2: str, n_points: int) -> None:
         """
-        This function creates a 3D plot of the objective function surface for two parameters.
+        This function creates a 2D plot of the objective function surface for two parameters.
 
         Parameters:
         - param1 (str): The name of the first parameter.
