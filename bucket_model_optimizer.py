@@ -236,7 +236,7 @@ class BucketModelOptimizer():
         - n_points (int): The number of points to sample for each parameter.
         """
         params = self.model.get_parameters().copy()
-        print(params)
+        # print(params)
         param1_values = np.linspace(self.bounds[param1][0], self.bounds[param1][1], n_points)
         param2_values = np.linspace(self.bounds[param2][0], self.bounds[param2][1], n_points)
         PARAM1, PARAM2 = np.meshgrid(param1_values, param2_values)
@@ -261,7 +261,7 @@ class BucketModelOptimizer():
         plt.xlabel(f'{param1} (mm/d/°C)')
         plt.ylabel(f'{param2} (days)')
 
-        print(params)
+        # print(params)
 
         plt.scatter(params[param1], params[param2], color='red', label='Optimal Point')
         plt.legend()

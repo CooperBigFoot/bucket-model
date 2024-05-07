@@ -7,7 +7,7 @@ def preprocess_data(path_to_file: str, catchment_area: float, output_destination
     - path_to_file (str): The path to the .txt file
     - output_destination (str): The path to the new .csv file
     - catchment_area (float): The catchment area in km^2
-  """
+    """
 
     precipitation = pd.read_csv(path_to_file, sep=r'\s+', skiprows=1, header=0)
 
