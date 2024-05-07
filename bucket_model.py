@@ -56,6 +56,9 @@ class BucketModel:
         - basin_elevation: basin elevation
         - snowmelt_temp_threshold: snowmelt temperature threshold
         - latitude: latitude in degrees
+
+        Returns:
+        - None
         """
         self.LR = lapse_rate # °C/m
         self.H_STATION = station_elevation # m.a.s.l
