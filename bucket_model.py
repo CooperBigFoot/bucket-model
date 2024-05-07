@@ -44,7 +44,7 @@ class BucketModel:
             raise ValueError("S_max must be positive")
         if self.fr < 0 or self.fr > 1:
             raise ValueError("fr must be between 0 and 1")
-        if self.rg < 1: # This why that is
+        if self.rg < 1: # Think why that is
             raise ValueError("rg must be greater than 1")
         
     def set_catchment_properties(self, lapse_rate: float, station_elevation: float, basin_elevation: float, snowmelt_temp_threshold: float, latitude: float) -> None:
