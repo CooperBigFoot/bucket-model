@@ -4,7 +4,7 @@ import numpy as np
 from dataclasses import dataclass, field
 from bucket_model import BucketModel
 from metrics import nse, log_nse, mae, kge, pbias, rmse
-import concurrent.futures
+from concurrent.futures import ThreadPoolExecutor
 from typing import Union
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
@@ -28,14 +28,14 @@ class BucketModelOptimizer:
 
     method: str = field(init=False, repr=False)
     bounds: dict = field(init=False, repr=False)
-    folds: int = field(init=False, repr=False)
+    folds: int = field(default=1, init=False, repr=False)
 
     @staticmethod
     def create_param_dict(keys, values):
         """This is a helper function that creates a dictionary from two lists."""
         return {key: value for key, value in zip(keys, values)}
 
-    def set_options(self, method: str, bounds: dict, folds: int = 0) -> None:
+    def set_options(self, method: str, bounds: dict, folds: int = 1) -> None:
         """
         This method sets the optimization method and bounds for the calibration.
 
@@ -68,6 +68,7 @@ class BucketModelOptimizer:
         - float: The value of the objective function.
         """
         model_copy = self.model.copy()
+
         # Create a dictionary from the parameter list. Look like this {'parameter_name': value, ...}
         param_dict = BucketModelOptimizer.create_param_dict(self.bounds.keys(), params)
 
@@ -80,7 +81,7 @@ class BucketModelOptimizer:
         # Objective function is NSE, minimized. Change metric if needed, adjust sign accordingly.
         objective_function = -nse(simulated_Q, self.training_data["Q"])
 
-        return objective_function
+        return round(objective_function, 6)
 
     def single_fold_calibration(
         self, bounds_list: list[tuple], initial_guess: list[float] = None
@@ -93,32 +94,40 @@ class BucketModelOptimizer:
 
         if initial_guess is None:
             initial_guess = [
-                np.random.uniform(lower, upper) for lower, upper in bounds_list
+                round(np.random.uniform(lower, upper), 6)
+                for lower, upper in bounds_list
             ]
 
-            print(f"Initial guess: {initial_guess}")
-            print(f"Bounds: {bounds_list}")
+        self.model.update_parameters(
+            BucketModelOptimizer.create_param_dict(self.bounds.keys(), initial_guess)
+        )
+
+        print(f"Initial guess: {initial_guess}")
+        # print(f"Bounds: {bounds_list}")
 
         options = {
-            # 'ftol': 1e-8,
-            # 'gtol': 1e-5,
+            "ftol": 1e-5,
+            "gtol": 1e-5,
             "eps": 1e-3,
         }
 
         def print_status(x):
-            print("Current parameter values:", x)
+            print("Current parameter values:", np.round(x, 2))
 
         result = minimize(
-            lambda params: self._objective_function(params),
+            self._objective_function,
             initial_guess,
             method="L-BFGS-B",  # Have a look at the doc for more methods: https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.minimize.html
             bounds=bounds_list,
             options=options,
-            # callback=print_status, # Uncomment this line to print the current parameter values at each iteration
+            jac=None,
+            callback=print_status,  # Uncomment this line to print the current parameter values at each iteration
         )
         return [round(param, 3) for param in result.x]
 
-    def calibrate(self, initial_guess: list[float] = None) -> tuple[dict, pd.DataFrame]:
+    def calibrate(
+        self, initial_guess: list[float] = None, update_model: bool = False
+    ) -> tuple[dict, pd.DataFrame]:
         """
         This method calibrates the model's parameters using the method and bounds
         specified in the set_options method. The method can be either 'local', 'global' or 'n-folds'.
@@ -133,19 +142,17 @@ class BucketModelOptimizer:
         # This is a list of tuples. Each tuple contains the lower and upper bounds for each parameter.
         bounds_list = list(self.bounds.values())
 
-        with concurrent.futures.ProcessPoolExecutor() as executor:
-            n_fold_results = list(
-                executor.map(
-                    self.single_fold_calibration, [bounds_list] * max(1, self.folds)
-                )
+        with ThreadPoolExecutor() as executor:
+            calibration_results = list(
+                executor.map(self.single_fold_calibration, [bounds_list] * self.folds)
             )
 
-            columns = list(self.bounds.keys())
-            n_fold_results = pd.DataFrame(n_fold_results, columns=columns)
+        columns = list(self.bounds.keys())
+        calibration_results = pd.DataFrame(calibration_results, columns=columns)
 
-            calibrated_parameters = self.get_best_parameters(n_fold_results)
+        calibrated_parameters = self.get_best_parameters(calibration_results)
 
-            return calibrated_parameters, n_fold_results
+        return calibrated_parameters, calibration_results
 
     def get_best_parameters(self, results: pd.DataFrame) -> dict:
         """This function takes a DataFrame containing the results of the n-folds calibration and returns the one that performs best.
@@ -158,14 +165,15 @@ class BucketModelOptimizer:
         """
         best_nse = float("inf")
         best_parameters = None
+        model_copy = self.model.copy()
 
         for index, row in results.iterrows():
             # Convert row to parameter dictionary
             params = row.to_dict()
 
-            self.model.update_parameters(params)
+            model_copy.update_parameters(params)
 
-            simulated_results = self.model.run(self.training_data)
+            simulated_results = model_copy.run(self.training_data)
 
             simulated_Q = simulated_results["Q_s"] + simulated_results["Q_gw"]
             observed_Q = self.training_data["Q"]
