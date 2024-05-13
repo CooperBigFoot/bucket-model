@@ -31,8 +31,15 @@ class BucketModelOptimizer:
     folds: int = field(default=1, init=False, repr=False)
 
     @staticmethod
-    def create_param_dict(keys, values):
-        """This is a helper function that creates a dictionary from two lists."""
+    def create_param_dict(keys: list, values: list) -> dict:
+        """This is a helper function that creates a dictionary from two lists.
+
+        Parameters:
+        - keys (list): A list of keys.
+        - values (list): A list of values.
+
+        Returns:
+        - dict: A dictionary containing the keys and values."""
         return {key: value for key, value in zip(keys, values)}
 
     def set_options(self, method: str, bounds: dict, folds: int = 1) -> None:
