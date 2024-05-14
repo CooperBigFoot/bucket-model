@@ -7,7 +7,7 @@ import copy
 @dataclass
 class BucketModel:
     """
-    A class to simulate hydrological processes using a simple bucket model.
+    A class to simulate hydrological processes using a simple bucket model. These processes include: Evapotranspiration, Surface Runoff, Groundwater Runoff, Snow Accumulation, Soil Storage, Groundwater Storage, Snow Mel, Rainfall and Snowfall.
 
     Parameters:
     - k: Degree-day snowmelt parameter (float).

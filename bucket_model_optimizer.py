@@ -22,6 +22,30 @@ GOF_DICT = {
 
 @dataclass
 class BucketModelOptimizer:
+    """
+    A class to optimize the parameters of a BucketModel using various optimization techniques.
+
+    Parameters:
+    - model (BucketModel): The bucket model instance to be optimized.
+    - training_data (pd.DataFrame): DataFrame containing the training data with columns 'P_mix', 'T_max', 'T_min', and 'Q'.
+    - validation_data (pd.DataFrame, optional): DataFrame containing the validation data with columns 'P_mix', 'T_max', 'T_min', and 'Q'.
+
+    Attributes:
+    - method (str): The optimization method to be used ('local', 'global', or 'n-folds').
+    - bounds (dict): Dictionary containing the lower and upper bounds for each parameter.
+    - folds (int): Number of folds for n-folds cross-validation.
+
+    Methods:
+    - create_param_dict: Helper function to create a dictionary from two lists of keys and values.
+    - set_options: Set the optimization method, bounds, and number of folds.
+    - _objective_function: Calculate the objective function (NSE) for the optimization algorithm.
+    - single_fold_calibration: Perform a single fold calibration using random initial guesses.
+    - calibrate: Calibrate the model's parameters using the specified method and bounds.
+    - get_best_parameters: Retrieve the best parameters from the calibration results.
+    - score_model: Calculate goodness of fit metrics for the training and validation data.
+    - plot_of_surface: Create a 2D plot of the objective function surface for two parameters.
+    """
+
     model: BucketModel
     training_data: pd.DataFrame
     validation_data: pd.DataFrame = None
@@ -137,7 +161,7 @@ class BucketModelOptimizer:
     ) -> tuple[dict, pd.DataFrame]:
         """
         This method calibrates the model's parameters using the method and bounds
-        specified in the set_options method. The method can be either 'local', 'global' or 'n-folds'.
+        specified in the set_options method. The method can be either 'local' or 'n-folds'.
 
         Parameters:
         - initial_guess (list[float]): A list of initial guesses for the parameters. If no initial guesses are provided, uniform random values are sampled from the bounds.
