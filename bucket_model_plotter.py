@@ -256,7 +256,70 @@ def plot_ECDF(
         fig.savefig(output_destination, dpi=300, bbox_inches="tight")
 
 
-def plot_KDE(
+# def plot_KDE(
+#     results: pd.DataFrame,
+#     observed: pd.DataFrame,
+#     title: str = "",
+#     output_destination: str = "",
+#     palette: list = ["#007A9A", "#25A18E"],
+#     figsize: tuple[int, int] = (6, 6),
+#     fontsize: int = 12,
+#     fill: bool = True,
+# ) -> None:
+#     """Plot the kernel density estimate (KDE) of the observed and simulated total runoff (Q) values.
+
+#     Parameters:
+#     - results (pd.DataFrame): The results from the model run.
+#     - observed (pd.DataFrame): The observed data. Should contain the column 'Q' for the observed runoff.
+#     - title (str): The title of the plot, if empty, no title will be shown.
+#     - output_destination (str): The path to the output file, if empty, the plot will not be saved.
+#     - palette (list): The color palette to use for the plot, default is ['#007A9A', '#25A18E'].
+#     - figsize (tuple): The size of the figure, default is (6, 6).
+#     - fontsize (int): The fontsize of the plot, default is 12.
+#     - fill (bool): If True, the KDE will be filled, default is True.
+#     """
+#     sns.set_context("paper")
+
+#     # Prepare the data
+#     results_filtered = results.copy()
+#     results_filtered["Total_Runoff"] = (
+#         results_filtered["Q_s"] + results_filtered["Q_gw"]
+#     )
+
+#     fig, ax = plt.subplots(figsize=figsize)
+
+#     # Plot the KDE of the observed and simulated total runoff
+#     sns.kdeplot(
+#         data=results_filtered["Total_Runoff"],
+#         ax=ax,
+#         color=palette[0],
+#         label="Simulated total runoff",
+#         fill=fill,
+#     )
+#     sns.kdeplot(
+#         data=observed["Q"],
+#         ax=ax,
+#         color=palette[1],
+#         label="Observed total runoff",
+#         fill=fill,
+#     )
+
+#     ax.set_xlabel("Total runoff [mm/d]", fontsize=fontsize)
+#     ax.set_ylabel("Density", fontsize=fontsize)
+#     ax.tick_params(which="both", length=10, width=2, labelsize=fontsize)
+#     ax.legend(fontsize=fontsize, loc="best")
+#     plt.tight_layout()
+#     sns.despine()
+#     ax.grid(color="gray", linestyle="--", linewidth=0.5, alpha=0.5)
+
+#     if title:
+#         plt.title(title)
+
+#     if output_destination:
+#         fig.savefig(output_destination, dpi=300, bbox_inches="tight")
+
+
+def plot_boxplots(
     results: pd.DataFrame,
     observed: pd.DataFrame,
     title: str = "",
@@ -264,9 +327,8 @@ def plot_KDE(
     palette: list = ["#007A9A", "#25A18E"],
     figsize: tuple[int, int] = (6, 6),
     fontsize: int = 12,
-    fill: bool = True,
 ) -> None:
-    """Plot the kernel density estimate (KDE) of the observed and simulated total runoff (Q) values.
+    """Plot boxplots of the observed and simulated total runoff (Q) values.
 
     Parameters:
     - results (pd.DataFrame): The results from the model run.
@@ -276,7 +338,6 @@ def plot_KDE(
     - palette (list): The color palette to use for the plot, default is ['#007A9A', '#25A18E'].
     - figsize (tuple): The size of the figure, default is (6, 6).
     - fontsize (int): The fontsize of the plot, default is 12.
-    - fill (bool): If True, the KDE will be filled, default is True.
     """
     sns.set_context("paper")
 
@@ -286,37 +347,37 @@ def plot_KDE(
         results_filtered["Q_s"] + results_filtered["Q_gw"]
     )
 
+    # Combine the data into a single DataFrame for plotting
+    combined_data = pd.DataFrame(
+        {
+            "Total_Runoff": pd.concat(
+                [results_filtered["Total_Runoff"], observed["Q"]]
+            ),
+            "Type": ["Simulated"] * len(results_filtered)
+            + ["Observed"] * len(observed),
+        }
+    )
+
     fig, ax = plt.subplots(figsize=figsize)
 
-    # Plot the KDE of the observed and simulated total runoff
-    sns.kdeplot(
-        data=results_filtered["Total_Runoff"],
-        ax=ax,
-        color=palette[0],
-        label="Simulated total runoff",
-        fill=fill,
-    )
-    sns.kdeplot(
-        data=observed["Q"],
-        ax=ax,
-        color=palette[1],
-        label="Observed total runoff",
-        fill=fill,
-    )
+    # Plot the boxplots
+    sns.boxplot(x="Type", y="Total_Runoff", data=combined_data, palette=palette, ax=ax)
 
-    ax.set_xlabel("Total runoff [mm/d]", fontsize=fontsize)
-    ax.set_ylabel("Density", fontsize=fontsize)
+    ax.set_xlabel("Type", fontsize=fontsize)
+    ax.set_ylabel("Total runoff [mm/d]", fontsize=fontsize)
     ax.tick_params(which="both", length=10, width=2, labelsize=fontsize)
-    ax.legend(fontsize=fontsize, loc="best")
+
+    if title:
+        plt.title(title, fontsize=fontsize)
+
     plt.tight_layout()
     sns.despine()
     ax.grid(color="gray", linestyle="--", linewidth=0.5, alpha=0.5)
 
-    if title:
-        plt.title(title)
-
     if output_destination:
         fig.savefig(output_destination, dpi=300, bbox_inches="tight")
+
+    plt.show()
 
 
 def plot_monthly_boxplot(
