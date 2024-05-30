@@ -193,6 +193,14 @@ def plot_Q_Q(
     plt.tight_layout()
     sns.despine()
 
+    min_x = results_filtered["Total_Runoff"].min()
+    max_x = results_filtered["Total_Runoff"].max()
+    min_y = observed["Q"].min()
+    max_y = observed["Q"].max()
+
+    plt.xlim(min_x, max_x)
+    plt.ylim(min_y, max_y)
+
     if title:
         plt.title(title)
 
@@ -325,7 +333,7 @@ def plot_boxplots(
     title: str = "",
     output_destination: str = "",
     palette: list = ["#007A9A", "#25A18E"],
-    figsize: tuple[int, int] = (6, 6),
+    figsize: tuple[int, int] = (3, 6),
     fontsize: int = 12,
 ) -> None:
     """Plot boxplots of the observed and simulated total runoff (Q) values.
