@@ -10,29 +10,29 @@ class BucketModel:
     A class to simulate hydrological processes using a simple bucket model. These processes include: Evapotranspiration, Surface Runoff, Groundwater Runoff, Snow Accumulation, Soil Storage, Groundwater Storage, Snow Mel, Rainfall and Snowfall.
 
     Parameters:
-    - k: Degree-day snowmelt parameter (float).
-    - S_max: Maximum soil water storage (float).
-    - fr: Fraction of impermeable area at soil saturation (float).
-    - rg: Mean residence time of water in groundwater (float).
-    - gauge_adj: Parameter to adjust for undercatch by rain gauge (fractional value, float).
+    - k: Degree-day snowmelt parameter (float). [mm/°C/day]
+    - S_max: Maximum soil water storage (float). [mm]
+    - fr: Fraction of impermeable area at soil saturation (float). [fractional value]
+    - rg: Mean residence time of water in groundwater (float). [days]
+    - gauge_adj: Parameter to adjust for undercatch by rain gauge (fractional value, float). [fractional value]
 
     Attributes:
-    - S: Soil water content (initial condition, float).
-    - S_gw: Groundwater storage (initial condition, float).
-    - T_basin: Basin temperature (float).
-    - T_max: Maximum temperature (float).
-    - T_min: Minimum temperature (float).
-    - Precip: Precipitation (float).
-    - Rain: Rainfall (float).
-    - Snow: Snowfall (float).
-    - Snow_accum: Snow accumulation (cover, float).
-    - Snow_melt: Snow melt (float).
-    - PET: Potential evapotranspiration (float).
-    - ET: Evapotranspiration (float).
-    - Q_s: Surface runoff (float).
-    - Q_gw: Groundwater runoff (float).
-    - Percol: Percolation (float).
-    - Date: Date (pd.Timestamp).
+    - S: Soil water content (initial condition, float). [mm]
+    - S_gw: Groundwater storage (initial condition, float). [mm]
+    - T_basin: Basin temperature (float). [°C]
+    - T_max: Maximum temperature (float). [°C]
+    - T_min: Minimum temperature (float). [°C] 
+    - Precip: Precipitation (float). [mm]
+    - Rain: Rainfall (float). [mm]
+    - Snow: Snowfall (float). [mm]
+    - Snow_accum: Snow accumulation (cover, float). [mm] 
+    - Snow_melt: Snow melt (float). [mm]
+    - PET: Potential evapotranspiration (float). [mm/day]
+    - ET: Evapotranspiration (float). [mm/day]
+    - Q_s: Surface runoff (float). [mm/day]
+    - Q_gw: Groundwater runoff (float). [mm/day]
+    - Percol: Percolation (float). [mm/day]
+    - Date: Date (pd.Timestamp). [YYYY-MM-DD]
 
     Methods:
     - set_catchment_properties: Set the values of the constants.
