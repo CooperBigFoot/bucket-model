@@ -21,11 +21,11 @@ class BucketModel:
     - S_gw: Groundwater storage (initial condition, float). [mm]
     - T_basin: Basin temperature (float). [°C]
     - T_max: Maximum temperature (float). [°C]
-    - T_min: Minimum temperature (float). [°C] 
+    - T_min: Minimum temperature (float). [°C]
     - Precip: Precipitation (float). [mm]
     - Rain: Rainfall (float). [mm]
     - Snow: Snowfall (float). [mm]
-    - Snow_accum: Snow accumulation (cover, float). [mm] 
+    - Snow_accum: Snow accumulation (cover, float). [mm]
     - Snow_melt: Snow melt (float). [mm]
     - PET: Potential evapotranspiration (float). [mm/day]
     - ET: Evapotranspiration (float). [mm/day]
@@ -380,7 +380,12 @@ class BucketModel:
         Returns:
         - dict: A dictionary containing the model parameters.
         """
-        return self.__dict__
+        parameters = {
+            field.name: getattr(self, field.name)
+            for field in self.__dataclass_fields__.values()
+            if field.init
+        }
+        return parameters
 
     def copy(self) -> "BucketModel":
         """
