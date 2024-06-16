@@ -285,6 +285,7 @@ class BucketModelOptimizer:
         figsize: tuple[int, int] = (10, 6),
         fontsize: int = 12,
         cmap: str = "viridis",
+        decimal_places: int = 2,
     ) -> None:
         """
         This function creates a 2D plot of the objective function surface for two parameters.
@@ -298,10 +299,9 @@ class BucketModelOptimizer:
         - figsize (tuple): The size of the figure.
         - fontsize (int): The font size of the labels.
         - cmap (str): The color map to use for the contour plot.
+        - decimal_places (int): The number of decimal places for the contour labels.
         """
         params = self.model.get_parameters().copy()
-
-        print(params)
 
         param1_values = np.linspace(
             self.bounds[param1][0], self.bounds[param1][1], n_points
@@ -319,14 +319,17 @@ class BucketModelOptimizer:
                 params_copy = params.copy()
                 params_copy[param1] = PARAM1[i, j]
                 params_copy[param2] = PARAM2[i, j]
-                goal_matrix[i, j] = self._objective_function(list(params_copy.values()))
+                goal_matrix[i, j] = - self._objective_function(list(params_copy.values())) # Important: change the sign based on the metric in the objective function. Here we are using NSE, so we need a minus.
 
         # Plotting the surface
         plt.figure(figsize=figsize)
         levels = np.linspace(np.min(goal_matrix), np.max(goal_matrix), 20)
 
-        CP = plt.contour(PARAM1, PARAM2, goal_matrix, levels=levels, cmap="viridis")
-        plt.clabel(CP, inline=True, fontsize=10)
+        CP = plt.contour(PARAM1, PARAM2, goal_matrix, levels=levels, cmap=cmap)
+        plt.clabel(CP, inline=True, fontsize=10, fmt=f"%.{decimal_places}f")
+
+        plt.xticks(fontsize=fontsize)
+        plt.yticks(fontsize=fontsize)
 
         plt.xlabel(f"{param1} [{unit_1}]", fontsize=fontsize)
         plt.ylabel(f"{param2} [{unit_2}]", fontsize=fontsize)
