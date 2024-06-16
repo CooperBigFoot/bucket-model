@@ -274,7 +274,6 @@ class BucketModelOptimizer:
 
         return scores
 
-    # TODO: Add customization options after meeting with team
     def plot_of_surface(
         self,
         param1: str,
@@ -319,7 +318,9 @@ class BucketModelOptimizer:
                 params_copy = params.copy()
                 params_copy[param1] = PARAM1[i, j]
                 params_copy[param2] = PARAM2[i, j]
-                goal_matrix[i, j] = - self._objective_function(list(params_copy.values())) # Important: change the sign based on the metric in the objective function. Here we are using NSE, so we need a minus.
+                goal_matrix[i, j] = -self._objective_function(
+                    list(params_copy.values())
+                )  # Important: change the sign based on the metric in the objective function. Here we are using NSE, so we need a minus.
 
         # Plotting the surface
         plt.figure(figsize=figsize)
@@ -340,3 +341,70 @@ class BucketModelOptimizer:
         plt.scatter(params[param1], params[param2], color="red", label="Optimal Point")
         plt.legend()
         plt.show()
+
+    def local_sensitivity_analysis(
+        self,
+        percent_change: float = 5,
+    ) -> pd.DataFrame:
+        """
+        Perform local sensitivity analysis on the model parameters.
+
+        Parameters:
+        - percent_change (float): The percentage change to apply to the parameters.
+
+        Returns:
+        - pd.DataFrame: A DataFrame summarizing the sensitivity analysis results.
+        """
+
+        def compute_annual_runoff(model: BucketModel) -> float:
+            results = model.run(self.training_data)
+            annual_runoff = results["Q_s"] + results["Q_gw"]
+            return annual_runoff.mean()
+
+        original_params = self.model.get_parameters().copy()
+        original_runoff = compute_annual_runoff(self.model)
+
+        sensitivity_results = []
+
+        for param in original_params.keys():
+            param_value = original_params[param]
+
+            # Perturb parameter by +percent_change
+            params_plus = original_params.copy()
+            params_plus[param] = param_value * (1 + percent_change / 100)
+            self.model.update_parameters(params_plus)
+            runoff_plus = compute_annual_runoff(self.model)
+
+            # Perturb parameter by -percent_change
+            params_minus = original_params.copy()
+            params_minus[param] = param_value * (1 - percent_change / 100)
+            self.model.update_parameters(params_minus)
+            runoff_minus = compute_annual_runoff(self.model)
+
+            # Calculate sensitivity
+            delta_P_plus = param_value * (percent_change / 100)
+            delta_P_minus = -param_value * (percent_change / 100)
+
+            sensitivity_plus = round(
+                ((runoff_plus - original_runoff) / delta_P_plus)
+                * (param_value / original_runoff),
+                4,
+            )
+            sensitivity_minus = round(
+                ((runoff_minus - original_runoff) / delta_P_minus)
+                * (param_value / original_runoff),
+                4,
+            )
+
+            sensitivity_results.append(
+                {
+                    "Parameter": param,
+                    f"Sensitivity +{percent_change}%": sensitivity_plus,
+                    f"Sensitivity -{percent_change}%": sensitivity_minus,
+                }
+            )
+
+        # Restore original parameters
+        self.model.update_parameters(original_params)
+
+        return pd.DataFrame(sensitivity_results)
