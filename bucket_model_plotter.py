@@ -371,7 +371,7 @@ def plot_boxplots(
     # Plot the boxplots
     sns.boxplot(x="Type", y="Total_Runoff", data=combined_data, palette=palette, ax=ax)
 
-    ax.set_xlabel("Type", fontsize=fontsize)
+    ax.set_xlabel("", fontsize=fontsize)
     ax.set_ylabel("Total runoff [mm/d]", fontsize=fontsize)
     ax.tick_params(which="both", length=10, width=2, labelsize=fontsize)
 
