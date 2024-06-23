@@ -88,7 +88,18 @@ class BucketModel:
     LAT: float = field(init=False, repr=False)
 
     def __post_init__(self):
-        """Check that the initialized values make sense to prevent unrealistic results."""
+        """
+        Check the validity of the model parameters after initialization.
+        """
+        self.check_parameter_validity()
+
+    def check_parameter_validity(self):
+        """
+        Check the validity of the model parameters.
+
+        Raises:
+        - ValueError: If any of the parameters are invalid.
+        """
         if self.k <= 0:
             raise ValueError("k must be positive")
         if self.S_max <= 0:
@@ -97,6 +108,8 @@ class BucketModel:
             raise ValueError("fr must be between 0 and 1")
         if self.rg < 1:
             raise ValueError("rg must be greater than 1")
+        if self.gauge_adj < 1:
+            raise ValueError("gauge_adj must be greater than or equal to 1")
 
     def set_catchment_properties(
         self,
@@ -369,9 +382,17 @@ class BucketModel:
 
         Parameters:
         - parameters (dict): A dictionary containing the parameters to update.
+
+        Raises:
+        - ValueError: If any of the parameters are invalid.
         """
         for key, value in parameters.items():
-            setattr(self, key, value)
+            if hasattr(self, key):
+                setattr(self, key, value)
+            else:
+                raise ValueError(f"Invalid parameter: {key}")
+        
+        self.check_parameter_validity()  # Validate after updating all parameters
 
     def get_parameters(self) -> dict:
         """
