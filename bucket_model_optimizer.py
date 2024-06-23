@@ -52,9 +52,13 @@ class BucketModelOptimizer:
     training_data: pd.DataFrame
     validation_data: pd.DataFrame = None
 
+    _model_copy: BucketModel = field(init=False, repr=False)
     method: str = field(init=False, repr=False)
     bounds: dict = field(init=False, repr=False)
     folds: int = field(default=1, init=False, repr=False)
+
+    def __post_init__(self):
+        self._model_copy = self.model.copy()
 
     @staticmethod
     def create_param_dict(keys: list, values: list) -> dict:
@@ -136,8 +140,8 @@ class BucketModelOptimizer:
                 for lower, upper in bounds_list
             ]
 
-        self.model.update_parameters(
-            BucketModelOptimizer.create_param_dict(self.bounds.keys(), initial_guess)
+        self._model_copy.update_parameters(
+            self.create_param_dict(self.bounds.keys(), initial_guess)
         )
 
         if verbose:
@@ -210,30 +214,21 @@ class BucketModelOptimizer:
         """
         best_nse = float("inf")
         best_parameters = None
-        model_copy = self.model.copy()
+        model_copy = self._model_copy.copy()
 
         for index, row in results.iterrows():
-            # Convert row to parameter dictionary
             params = row.to_dict()
-
             model_copy.update_parameters(params)
-
             simulated_results = model_copy.run(self.training_data)
-
             simulated_Q = simulated_results["Q_s"] + simulated_results["Q_gw"]
             observed_Q = self.training_data["Q"]
-
-            # Calculate nse
             current_nse = nse(simulated_Q, observed_Q)
 
-            # Check if the current nse is the best one
             if current_nse < best_nse:
                 best_nse = current_nse
                 best_parameters = params
 
-        # Update the model's parameters with the best parameters, otherwise the last set of parameters will be used.
-        self.model.update_parameters(best_parameters)
-
+        self._model_copy.update_parameters(best_parameters)
         return best_parameters
 
     def score_model(self, metrics: list[str] = ["nse"]) -> dict:
@@ -247,11 +242,9 @@ class BucketModelOptimizer:
         - dict: A dictionary containing the scores for the training and validation data.
         """
 
-        metrics = [
-            metric.lower() for metric in metrics
-        ]  # Convert all metrics to lowercase
+        metrics = [metric.lower() for metric in metrics]
 
-        training_results = self.model.run(self.training_data)
+        training_results = self._model_copy.run(self.training_data)
         simulated_Q = training_results["Q_s"] + training_results["Q_gw"]
         observed_Q = self.training_data["Q"]
         training_score = {
@@ -262,99 +255,100 @@ class BucketModelOptimizer:
         scores = {"training": training_score}
 
         if self.validation_data is not None:
-            validation_results = self.model.run(self.validation_data)
+            validation_results = self._model_copy.run(self.validation_data)
             simulated_Q = validation_results["Q_s"] + validation_results["Q_gw"]
             observed_Q = self.validation_data["Q"]
             validation_score = {
                 metric: round(GOF_DICT[metric](simulated_Q, observed_Q), 3)
                 for metric in metrics
             }
-
             scores["validation"] = validation_score
 
         return scores
 
+    def plot_of_surface(
+        self,
+        param1: str,
+        param2: str,
+        n_points: int,
+        unit_1: str,
+        unit_2: str,
+        figsize: tuple[int, int] = (10, 6),
+        fontsize: int = 12,
+        cmap: str = "viridis",
+        decimal_places: int = 2,
+    ) -> None:
+        """
+        This function creates a 2D plot of the objective function surface for two parameters.
 
-def plot_of_surface(
-    self,
-    param1: str,
-    param2: str,
-    n_points: int,
-    unit_1: str,
-    unit_2: str,
-    figsize: tuple[int, int] = (10, 6),
-    fontsize: int = 12,
-    cmap: str = "viridis",
-    decimal_places: int = 2,
-) -> None:
-    """
-    This function creates a 2D plot of the objective function surface for two parameters.
+        Parameters:
+        - param1 (str): The name of the first parameter.
+        - param2 (str): The name of the second parameter.
+        - n_points (int): The number of points to sample for each parameter.
+        - unit_1 (str): The unit of the first parameter.
+        - unit_2 (str): The unit of the second parameter.
+        - figsize (tuple): The size of the figure.
+        - fontsize (int): The font size of the labels.
+        - cmap (str): The color map to use for the contour plot.
+        - decimal_places (int): The number of decimal places for the contour labels.
+        """
 
-    Parameters:
-    - param1 (str): The name of the first parameter.
-    - param2 (str): The name of the second parameter.
-    - n_points (int): The number of points to sample for each parameter.
-    - unit_1 (str): The unit of the first parameter.
-    - unit_2 (str): The unit of the second parameter.
-    - figsize (tuple): The size of the figure.
-    - fontsize (int): The font size of the labels.
-    - cmap (str): The color map to use for the contour plot.
-    - decimal_places (int): The number of decimal places for the contour labels.
-    """
-    # Validate that the parameter names exist in the model
-    model_params = self.model.get_parameters()
-    if param1 not in model_params:
-        raise ValueError(f"Parameter '{param1}' does not exist in the model.")
-    if param2 not in model_params:
-        raise ValueError(f"Parameter '{param2}' does not exist in the model.")
+        model_params = self._model_copy.get_parameters()
 
-    # Validate that the parameters have bounds defined
-    if param1 not in self.bounds:
-        raise ValueError(f"Bounds for parameter '{param1}' are not defined.")
-    if param2 not in self.bounds:
-        raise ValueError(f"Bounds for parameter '{param2}' are not defined.")
+        if param1 not in model_params:
+            raise ValueError(f"Parameter '{param1}' does not exist in the model.")
 
-    params = model_params.copy()
+        if param2 not in model_params:
+            raise ValueError(f"Parameter '{param2}' does not exist in the model.")
 
-    param1_values = np.linspace(
-        self.bounds[param1][0], self.bounds[param1][1], n_points
-    )
-    param2_values = np.linspace(
-        self.bounds[param2][0], self.bounds[param2][1], n_points
-    )
-    PARAM1, PARAM2 = np.meshgrid(param1_values, param2_values)
+        if param1 not in self.bounds:
+            raise ValueError(f"Bounds for parameter '{param1}' are not defined.")
 
-    goal_matrix = np.zeros(PARAM1.shape)
+        if param2 not in self.bounds:
+            raise ValueError(f"Bounds for parameter '{param2}' are not defined.")
 
-    # Compute the objective function for each combination of param1 and param2
-    for i in range(n_points):
-        for j in range(n_points):
-            params_copy = params.copy()
-            params_copy[param1] = PARAM1[i, j]
-            params_copy[param2] = PARAM2[i, j]
-            goal_matrix[i, j] = -self._objective_function(
-                list(params_copy.values())
-            )  # Important: change the sign based on the metric in the objective function. Here we are using NSE, so we need a minus.
+        params = model_params.copy()
 
-    # Plotting the surface
-    plt.figure(figsize=figsize)
-    levels = np.linspace(np.min(goal_matrix), np.max(goal_matrix), 20)
+        param1_values = np.linspace(
+            self.bounds[param1][0], self.bounds[param1][1], n_points
+        )
+        param2_values = np.linspace(
+            self.bounds[param2][0], self.bounds[param2][1], n_points
+        )
+        PARAM1, PARAM2 = np.meshgrid(param1_values, param2_values)
 
-    CP = plt.contour(PARAM1, PARAM2, goal_matrix, levels=levels, cmap=cmap)
-    plt.clabel(CP, inline=True, fontsize=10, fmt=f"%.{decimal_places}f")
+        goal_matrix = np.zeros(PARAM1.shape)
 
-    plt.xticks(fontsize=fontsize)
-    plt.yticks(fontsize=fontsize)
+        # Calculate the objective function for each combination of parameters
+        for i in range(n_points):
+            for j in range(n_points):
 
-    plt.xlabel(f"{param1} [{unit_1}]", fontsize=fontsize)
-    plt.ylabel(f"{param2} [{unit_2}]", fontsize=fontsize)
+                params_copy = params.copy()
 
-    # This is just for styling purposes
-    sns.despine()
+                params_copy[param1] = PARAM1[i, j]
+                params_copy[param2] = PARAM2[i, j]
 
-    plt.scatter(params[param1], params[param2], color="red", label="Optimal Point")
-    plt.legend()
-    plt.show()
+                goal_matrix[i, j] = -self._objective_function(
+                    list(params_copy.values())
+                )
+
+        plt.figure(figsize=figsize)
+        levels = np.linspace(np.min(goal_matrix), np.max(goal_matrix), 20)
+
+        CP = plt.contour(PARAM1, PARAM2, goal_matrix, levels=levels, cmap=cmap)
+        plt.clabel(CP, inline=True, fontsize=10, fmt=f"%.{decimal_places}f")
+
+        plt.xticks(fontsize=fontsize)
+        plt.yticks(fontsize=fontsize)
+
+        plt.xlabel(f"{param1} [{unit_1}]", fontsize=fontsize)
+        plt.ylabel(f"{param2} [{unit_2}]", fontsize=fontsize)
+
+        sns.despine()
+
+        plt.scatter(params[param1], params[param2], color="red", label="Optimal Point")
+        plt.legend()
+        plt.show()
 
     def local_sensitivity_analysis(
         self,
@@ -375,27 +369,28 @@ def plot_of_surface(
             annual_runoff = results["Q_s"] + results["Q_gw"]
             return annual_runoff.mean()
 
-        original_params = self.model.get_parameters().copy()
-        original_runoff = compute_annual_runoff(self.model)
+        original_params = self._model_copy.get_parameters().copy()
+        original_runoff = compute_annual_runoff(self._model_copy)
 
         sensitivity_results = []
 
         for param in original_params.keys():
             param_value = original_params[param]
 
-            # Perturb parameter by +percent_change
             params_plus = original_params.copy()
+
             params_plus[param] = param_value * (1 + percent_change / 100)
-            self.model.update_parameters(params_plus)
-            runoff_plus = compute_annual_runoff(self.model)
 
-            # Perturb parameter by -percent_change
+            self._model_copy.update_parameters(params_plus)
+            runoff_plus = compute_annual_runoff(self._model_copy)
+
             params_minus = original_params.copy()
-            params_minus[param] = param_value * (1 - percent_change / 100)
-            self.model.update_parameters(params_minus)
-            runoff_minus = compute_annual_runoff(self.model)
 
-            # Calculate sensitivity
+            params_minus[param] = param_value * (1 - percent_change / 100)
+
+            self._model_copy.update_parameters(params_minus)
+            runoff_minus = compute_annual_runoff(self._model_copy)
+
             delta_P_plus = param_value * (percent_change / 100)
             delta_P_minus = -param_value * (percent_change / 100)
 
@@ -418,7 +413,38 @@ def plot_of_surface(
                 }
             )
 
-        # Restore original parameters
-        self.model.update_parameters(original_params)
+        self._model_copy.update_parameters(original_params)
 
         return pd.DataFrame(sensitivity_results)
+
+    def sync_models(self, direction: str = "to_original") -> None:
+        """
+        Synchronize the working copy and the original model.
+
+        Parameters:
+        - direction (str): The direction of synchronization.
+                           'to_original': Apply changes from working copy to original model (default).
+                           'from_original': Reset working copy to match the original model.
+
+        Raises:
+        - ValueError: If an invalid direction is provided.
+        """
+        if direction == "to_original":
+            self.model.update_parameters(self._model_copy.get_parameters())
+            print("Changes from working copy applied to the original model.")
+        elif direction == "from_original":
+            self._model_copy = self.model.copy()
+            print("Working copy reset to match the original model.")
+        else:
+            raise ValueError("Invalid direction. Use 'to_original' or 'from_original'.")
+        
+
+    def get_optimized_model(self) -> BucketModel:
+        """
+        Synchronize the working copy with the original model and return a copy of the optimized model.
+
+        Returns:
+        - BucketModel: A copy of the optimized model.
+        """
+        self.sync_models('to_original')
+        return self.model.copy()

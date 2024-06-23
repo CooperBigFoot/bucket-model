@@ -108,8 +108,8 @@ class BucketModel:
             raise ValueError("fr must be between 0 and 1")
         if self.rg < 1:
             raise ValueError("rg must be greater than 1")
-        if self.gauge_adj < 1:
-            raise ValueError("gauge_adj must be greater than or equal to 1")
+        if self.gauge_adj < 0:
+            raise ValueError("gauge_adj must be greater than or equal to 0")
 
     def set_catchment_properties(
         self,
