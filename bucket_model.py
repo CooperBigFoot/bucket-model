@@ -138,16 +138,14 @@ class BucketModel:
         self.T_SM = snowmelt_temp_threshold
         self.LAT = latitude
 
-    def change_initial_conditions(
-        self, S: float = None, S_gw: float = None, Snow_accum: float = None
-    ) -> None:
+    def change_initial_conditions(self, S: float = None, S_gw: float = None) -> None:
         """
         Change the initial conditions of the model.
 
         Parameters:
         - S (float, optional): New initial soil water content (mm). Must be between 0 and S_max.
         - S_gw (float, optional): New initial groundwater storage (mm). Must be non-negative.
-        - Snow_accum (float, optional): New initial snow accumulation (mm). Must be non-negative.
+
 
         Raises:
         - ValueError: If any of the provided values are outside their valid ranges.
@@ -166,16 +164,8 @@ class BucketModel:
             else:
                 raise ValueError("Initial groundwater storage must be non-negative.")
 
-        if Snow_accum is not None:
-            if Snow_accum >= 0:
-                self.Snow_accum = Snow_accum
-            else:
-                raise ValueError("Initial snow accumulation must be non-negative.")
-
         print("Initial conditions updated successfully.")
-        print(
-            f"Current initial conditions: S = {self.S} mm, S_gw = {self.S_gw} mm, Snow_accum = {self.Snow_accum} mm"
-        )
+        print(f"Current initial conditions: S = {self.S} mm, S_gw = {self.S_gw} mm")
 
     def adjust_temperature(self) -> None:
         """
