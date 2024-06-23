@@ -457,71 +457,123 @@ def plot_timeseries(
     start_year: str,
     end_year: str,
     monthly: bool = False,
+    plot_precipitation: bool = False,
     title: str = "",
     output_destination: str = "",
-    figsize: tuple[int, int] = (10, 6),
+    figsize: tuple[int, int] = (10, 8),
     fontsize: int = 12,
-    palette: list = ["#007A9A", "#25A18E"],
+    palette: list = ["#007A9A", "#25A18E", "#8B4513"],
 ) -> None:
-    """Plot the timeseries of the observed and simulated total runoff (Q) values.
-
-    Parameters:
-    - results (pd.DataFrame): The results from the model run.
-    - observed (pd.DataFrame): The observed data. Should contain the column 'Q' for the observed runoff.
-    - start_year (str): The start date of the plot.
-    - end_year (str): The end date of the plot, inclusive.
-    - monthly (bool): If True, the plot will be monthly, default is False (daily).
-    - title (str): The title of the plot, if empty, no title will be shown.
-    - output_destination (str): The path to the output file, if empty, the plot will not be saved.
-    - figsize (tuple): The size of the figure, default is (10, 6).
-    - fontsize (int): The fontsize of the plot, default is 12.
-    - palette (list): The color palette to use for the plot, default is ['#007A9A', '#25A18E'].
+    """
+    Plot the timeseries of the observed and simulated total runoff (Q) values,
+    with an option to include precipitation on an inverted axis.
     """
     sns.set_context("paper")
 
+    # Ensure palette has at least 2 colors, add a default color for precipitation if needed
+    if len(palette) < 2:
+        palette = ["#007A9A", "#25A18E"]
+    if plot_precipitation and len(palette) < 3:
+        palette.append("#8B4513")
+
+    # Use helper functions for data preparation
     results_filtered = filter_data_by_date(results, start_year, end_year)
     results_filtered = calculate_total_runoff(results_filtered)
     observed_filtered = filter_data_by_date(observed, start_year, end_year)
 
-    fig, ax = plt.subplots(figsize=figsize)
+    fig, ax1 = plt.subplots(figsize=figsize)
 
     if monthly:
         results_filtered = results_filtered.resample("ME").sum()
         observed_filtered = observed_filtered.resample("ME").sum()
 
-    sns.lineplot(
-        data=results_filtered["Total_Runoff"],
-        ax=ax,
+    # Plot runoff
+    (line1,) = ax1.plot(
+        results_filtered.index,
+        results_filtered["Total_Runoff"],
         color=palette[0],
         label="Simulated total runoff",
         alpha=0.7,
     )
-    sns.lineplot(
-        data=observed_filtered["Q"],
-        ax=ax,
+    (line2,) = ax1.plot(
+        observed_filtered.index,
+        observed_filtered["Q"],
         color=palette[1],
         label="Observed total runoff",
         alpha=0.7,
     )
 
-    ax.set_xlabel("")
-
+    ax1.set_xlabel("", fontsize=fontsize)
     if monthly:
-        ax.set_ylabel("Total runoff [mm/month]", fontsize=fontsize)
+        ax1.set_ylabel("Total runoff [mm/month]", fontsize=fontsize)
     else:
-        ax.set_ylabel("Total runoff [mm/d]", fontsize=fontsize)
+        ax1.set_ylabel("Total runoff [mm/d]", fontsize=fontsize)
 
-    ax.tick_params(which="both", length=10, width=2, labelsize=fontsize)
-    ax.legend(fontsize=fontsize, loc="best")
+    ax1.tick_params(axis="y", labelsize=fontsize)
+
+    if plot_precipitation:
+        ax2 = ax1.twinx()
+        if monthly:
+            precip = results_filtered["Precip"].resample("ME").sum()
+            ax2.set_ylabel("Precipitation [mm/month]", fontsize=fontsize)
+        else:
+            precip = results_filtered["Precip"]
+            ax2.set_ylabel("Precipitation [mm/d]", fontsize=fontsize)
+
+        # Use step plot instead of bar plot
+        (precip_line,) = ax2.step(
+            precip.index,
+            precip,
+            color=palette[2],
+            label="Precipitation",
+            where="pre",
+            linewidth=1,
+        )
+        ax2.fill_between(precip.index, precip, step="pre", alpha=0.3, color=palette[2])
+
+        # Set y-axis limits for precipitation
+        ax2.set_ylim(precip.max() * 1.5, 0)  # Inverted axis
+        ax2.tick_params(axis="y", labelsize=fontsize)
+
+    plt.title(title, fontsize=fontsize + 2)
+    sns.despine(right=not plot_precipitation)
+
+    ax1.grid(color="gray", linestyle="--", linewidth=0.5, alpha=0.5)
+
+    max_runoff = max(
+        results_filtered["Total_Runoff"].max(), observed_filtered["Q"].max()
+    )
+    ax1.set_ylim(0, max_runoff * 1.5)
+
+    # Create legend outside the plot
+    if plot_precipitation:
+        legends = ax1.legend(
+            handles=[line1, line2, precip_line],
+            labels=[line1.get_label(), line2.get_label(), precip_line.get_label()],
+            loc="upper center",
+            bbox_to_anchor=(0.5, -0.15),
+            ncol=3,
+            fontsize=fontsize,
+        )
+    else:
+        legends = ax1.legend(
+            handles=[line1, line2],
+            loc="upper center",
+            bbox_to_anchor=(0.5, -0.15),
+            ncol=2,
+            fontsize=fontsize,
+        )
+
+    # Adjust layout to prevent cutoff
     plt.tight_layout()
-    sns.despine()
-    ax.grid(color="gray", linestyle="--", linewidth=0.5, alpha=0.5)
 
-    if title:
-        plt.title(title)
+    # Adjust subplot to make room for legend
+    plt.subplots_adjust(bottom=0.2)
 
     if output_destination:
         fig.savefig(output_destination, dpi=300, bbox_inches="tight")
+
+    plt.show()
 
 
 def plot_parameter_kde(
