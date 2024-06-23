@@ -7,6 +7,38 @@ import numpy as np  # For the density plot
 import pandas as pd  # For the data handling
 
 
+def calculate_total_runoff(results: pd.DataFrame) -> pd.DataFrame:
+    """
+    Calculate total runoff by summing surface runoff (Q_s) and groundwater runoff (Q_gw).
+
+    Parameters:
+    - results (pd.DataFrame): The results dataframe containing Q_s and Q_gw columns.
+
+    Returns:
+    - pd.DataFrame: The input dataframe with an additional 'Total_Runoff' column.
+    """
+    results_copy = results.copy()
+    results_copy["Total_Runoff"] = results_copy["Q_s"] + results_copy["Q_gw"]
+    return results_copy
+
+
+def filter_data_by_date(
+    data: pd.DataFrame, start_year: str, end_year: str
+) -> pd.DataFrame:
+    """
+    Filter the dataframe to include only data within the specified date range.
+
+    Parameters:
+    - data (pd.DataFrame): The input dataframe with a datetime index.
+    - start_year (str): The start year of the date range (inclusive).
+    - end_year (str): The end year of the date range (inclusive).
+
+    Returns:
+    - pd.DataFrame: The filtered dataframe.
+    """
+    return data[start_year:end_year]
+
+
 def plot_water_balance(
     results: pd.DataFrame,
     title: str = "",
@@ -145,10 +177,7 @@ def plot_Q_Q(
     sns.set_context("paper")
 
     # Prepare the data
-    results_filtered = results.copy()
-    results_filtered["Total_Runoff"] = (
-        results_filtered["Q_s"] + results_filtered["Q_gw"]
-    )
+    results_filtered = calculate_total_runoff(results)
 
     fig, ax = plt.subplots(figsize=figsize)
 
@@ -231,10 +260,7 @@ def plot_ECDF(
     sns.set_context("paper")
 
     # Prepare the data
-    results_filtered = results.copy()
-    results_filtered["Total_Runoff"] = (
-        results_filtered["Q_s"] + results_filtered["Q_gw"]
-    )
+    results_filtered = calculate_total_runoff(results)
 
     fig, ax = plt.subplots(figsize=figsize)
 
@@ -264,69 +290,6 @@ def plot_ECDF(
         fig.savefig(output_destination, dpi=300, bbox_inches="tight")
 
 
-# def plot_KDE(
-#     results: pd.DataFrame,
-#     observed: pd.DataFrame,
-#     title: str = "",
-#     output_destination: str = "",
-#     palette: list = ["#007A9A", "#25A18E"],
-#     figsize: tuple[int, int] = (6, 6),
-#     fontsize: int = 12,
-#     fill: bool = True,
-# ) -> None:
-#     """Plot the kernel density estimate (KDE) of the observed and simulated total runoff (Q) values.
-
-#     Parameters:
-#     - results (pd.DataFrame): The results from the model run.
-#     - observed (pd.DataFrame): The observed data. Should contain the column 'Q' for the observed runoff.
-#     - title (str): The title of the plot, if empty, no title will be shown.
-#     - output_destination (str): The path to the output file, if empty, the plot will not be saved.
-#     - palette (list): The color palette to use for the plot, default is ['#007A9A', '#25A18E'].
-#     - figsize (tuple): The size of the figure, default is (6, 6).
-#     - fontsize (int): The fontsize of the plot, default is 12.
-#     - fill (bool): If True, the KDE will be filled, default is True.
-#     """
-#     sns.set_context("paper")
-
-#     # Prepare the data
-#     results_filtered = results.copy()
-#     results_filtered["Total_Runoff"] = (
-#         results_filtered["Q_s"] + results_filtered["Q_gw"]
-#     )
-
-#     fig, ax = plt.subplots(figsize=figsize)
-
-#     # Plot the KDE of the observed and simulated total runoff
-#     sns.kdeplot(
-#         data=results_filtered["Total_Runoff"],
-#         ax=ax,
-#         color=palette[0],
-#         label="Simulated total runoff",
-#         fill=fill,
-#     )
-#     sns.kdeplot(
-#         data=observed["Q"],
-#         ax=ax,
-#         color=palette[1],
-#         label="Observed total runoff",
-#         fill=fill,
-#     )
-
-#     ax.set_xlabel("Total runoff [mm/d]", fontsize=fontsize)
-#     ax.set_ylabel("Density", fontsize=fontsize)
-#     ax.tick_params(which="both", length=10, width=2, labelsize=fontsize)
-#     ax.legend(fontsize=fontsize, loc="best")
-#     plt.tight_layout()
-#     sns.despine()
-#     ax.grid(color="gray", linestyle="--", linewidth=0.5, alpha=0.5)
-
-#     if title:
-#         plt.title(title)
-
-#     if output_destination:
-#         fig.savefig(output_destination, dpi=300, bbox_inches="tight")
-
-
 def plot_boxplots(
     results: pd.DataFrame,
     observed: pd.DataFrame,
@@ -350,10 +313,7 @@ def plot_boxplots(
     sns.set_context("paper")
 
     # Prepare the data
-    results_filtered = results.copy()
-    results_filtered["Total_Runoff"] = (
-        results_filtered["Q_s"] + results_filtered["Q_gw"]
-    )
+    results_filtered = calculate_total_runoff(results)
 
     # Combine the data into a single DataFrame for plotting
     combined_data = pd.DataFrame(
@@ -415,10 +375,7 @@ def plot_monthly_boxplot(
     sns.set_context("paper")
 
     # Prepare the data
-    results_filtered = results.copy()
-    results_filtered["Total_Runoff"] = (
-        results_filtered["Q_s"] + results_filtered["Q_gw"]
-    )
+    results_filtered = calculate_total_runoff(results)
     results_filtered["Month"] = results_filtered.index.month
     results_filtered["Year"] = results_filtered.index.year
 
@@ -522,15 +479,9 @@ def plot_timeseries(
     """
     sns.set_context("paper")
 
-    # Prepare the data
-    results_filtered = results.copy()
-    results_filtered = results_filtered[start_year:end_year]
-    results_filtered["Total_Runoff"] = (
-        results_filtered["Q_s"] + results_filtered["Q_gw"]
-    )
-
-    observed_filtered = observed.copy()
-    observed_filtered = observed_filtered[start_year:end_year]
+    results_filtered = filter_data_by_date(results, start_year, end_year)
+    results_filtered = calculate_total_runoff(results_filtered)
+    observed_filtered = filter_data_by_date(observed, start_year, end_year)
 
     fig, ax = plt.subplots(figsize=figsize)
 
