@@ -274,73 +274,87 @@ class BucketModelOptimizer:
 
         return scores
 
-    def plot_of_surface(
-        self,
-        param1: str,
-        param2: str,
-        n_points: int,
-        unit_1: str,
-        unit_2: str,
-        figsize: tuple[int, int] = (10, 6),
-        fontsize: int = 12,
-        cmap: str = "viridis",
-        decimal_places: int = 2,
-    ) -> None:
-        """
-        This function creates a 2D plot of the objective function surface for two parameters.
 
-        Parameters:
-        - param1 (str): The name of the first parameter.
-        - param2 (str): The name of the second parameter.
-        - n_points (int): The number of points to sample for each parameter.
-        - unit_1 (str): The unit of the first parameter.
-        - unit_2 (str): The unit of the second parameter.
-        - figsize (tuple): The size of the figure.
-        - fontsize (int): The font size of the labels.
-        - cmap (str): The color map to use for the contour plot.
-        - decimal_places (int): The number of decimal places for the contour labels.
-        """
-        params = self.model.get_parameters().copy()
+def plot_of_surface(
+    self,
+    param1: str,
+    param2: str,
+    n_points: int,
+    unit_1: str,
+    unit_2: str,
+    figsize: tuple[int, int] = (10, 6),
+    fontsize: int = 12,
+    cmap: str = "viridis",
+    decimal_places: int = 2,
+) -> None:
+    """
+    This function creates a 2D plot of the objective function surface for two parameters.
 
-        param1_values = np.linspace(
-            self.bounds[param1][0], self.bounds[param1][1], n_points
-        )
-        param2_values = np.linspace(
-            self.bounds[param2][0], self.bounds[param2][1], n_points
-        )
-        PARAM1, PARAM2 = np.meshgrid(param1_values, param2_values)
+    Parameters:
+    - param1 (str): The name of the first parameter.
+    - param2 (str): The name of the second parameter.
+    - n_points (int): The number of points to sample for each parameter.
+    - unit_1 (str): The unit of the first parameter.
+    - unit_2 (str): The unit of the second parameter.
+    - figsize (tuple): The size of the figure.
+    - fontsize (int): The font size of the labels.
+    - cmap (str): The color map to use for the contour plot.
+    - decimal_places (int): The number of decimal places for the contour labels.
+    """
+    # Validate that the parameter names exist in the model
+    model_params = self.model.get_parameters()
+    if param1 not in model_params:
+        raise ValueError(f"Parameter '{param1}' does not exist in the model.")
+    if param2 not in model_params:
+        raise ValueError(f"Parameter '{param2}' does not exist in the model.")
 
-        goal_matrix = np.zeros(PARAM1.shape)
+    # Validate that the parameters have bounds defined
+    if param1 not in self.bounds:
+        raise ValueError(f"Bounds for parameter '{param1}' are not defined.")
+    if param2 not in self.bounds:
+        raise ValueError(f"Bounds for parameter '{param2}' are not defined.")
 
-        # Compute the objective function for each combination of param1 and param2
-        for i in range(n_points):
-            for j in range(n_points):
-                params_copy = params.copy()
-                params_copy[param1] = PARAM1[i, j]
-                params_copy[param2] = PARAM2[i, j]
-                goal_matrix[i, j] = -self._objective_function(
-                    list(params_copy.values())
-                )  # Important: change the sign based on the metric in the objective function. Here we are using NSE, so we need a minus.
+    params = model_params.copy()
 
-        # Plotting the surface
-        plt.figure(figsize=figsize)
-        levels = np.linspace(np.min(goal_matrix), np.max(goal_matrix), 20)
+    param1_values = np.linspace(
+        self.bounds[param1][0], self.bounds[param1][1], n_points
+    )
+    param2_values = np.linspace(
+        self.bounds[param2][0], self.bounds[param2][1], n_points
+    )
+    PARAM1, PARAM2 = np.meshgrid(param1_values, param2_values)
 
-        CP = plt.contour(PARAM1, PARAM2, goal_matrix, levels=levels, cmap=cmap)
-        plt.clabel(CP, inline=True, fontsize=10, fmt=f"%.{decimal_places}f")
+    goal_matrix = np.zeros(PARAM1.shape)
 
-        plt.xticks(fontsize=fontsize)
-        plt.yticks(fontsize=fontsize)
+    # Compute the objective function for each combination of param1 and param2
+    for i in range(n_points):
+        for j in range(n_points):
+            params_copy = params.copy()
+            params_copy[param1] = PARAM1[i, j]
+            params_copy[param2] = PARAM2[i, j]
+            goal_matrix[i, j] = -self._objective_function(
+                list(params_copy.values())
+            )  # Important: change the sign based on the metric in the objective function. Here we are using NSE, so we need a minus.
 
-        plt.xlabel(f"{param1} [{unit_1}]", fontsize=fontsize)
-        plt.ylabel(f"{param2} [{unit_2}]", fontsize=fontsize)
+    # Plotting the surface
+    plt.figure(figsize=figsize)
+    levels = np.linspace(np.min(goal_matrix), np.max(goal_matrix), 20)
 
-        # This is just for styling purposes
-        sns.despine()
+    CP = plt.contour(PARAM1, PARAM2, goal_matrix, levels=levels, cmap=cmap)
+    plt.clabel(CP, inline=True, fontsize=10, fmt=f"%.{decimal_places}f")
 
-        plt.scatter(params[param1], params[param2], color="red", label="Optimal Point")
-        plt.legend()
-        plt.show()
+    plt.xticks(fontsize=fontsize)
+    plt.yticks(fontsize=fontsize)
+
+    plt.xlabel(f"{param1} [{unit_1}]", fontsize=fontsize)
+    plt.ylabel(f"{param2} [{unit_2}]", fontsize=fontsize)
+
+    # This is just for styling purposes
+    sns.despine()
+
+    plt.scatter(params[param1], params[param2], color="red", label="Optimal Point")
+    plt.legend()
+    plt.show()
 
     def local_sensitivity_analysis(
         self,

@@ -391,7 +391,7 @@ class BucketModel:
                 setattr(self, key, value)
             else:
                 raise ValueError(f"Invalid parameter: {key}")
-        
+
         self.check_parameter_validity()  # Validate after updating all parameters
 
     def get_parameters(self) -> dict:
