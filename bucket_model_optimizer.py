@@ -212,7 +212,7 @@ class BucketModelOptimizer:
         Returns:
         - dict: A dictionary containing the best parameters.
         """
-        best_nse = float("inf")
+        best_nse = float("-inf")
         best_parameters = None
         model_copy = self._model_copy.copy()
 
@@ -224,7 +224,7 @@ class BucketModelOptimizer:
             observed_Q = self.training_data["Q"]
             current_nse = nse(simulated_Q, observed_Q)
 
-            if current_nse < best_nse:
+            if current_nse > best_nse:
                 best_nse = current_nse
                 best_parameters = params
 
