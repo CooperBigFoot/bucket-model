@@ -1,12 +1,15 @@
 import pandas as pd 
 
-def preprocess_data(path_to_file: str, catchment_area: float, output_destination: str = '') -> None:
+def preprocess_data(path_to_file: str, catchment_area: float, output_destination: str = '') -> pd.DataFrame:
     """This function takes the .txt file you find on moodle and transforms it into a pandas DataFrame.
     
     Parameters:
     - path_to_file (str): The path to the .txt file
     - output_destination (str): The path to the new .csv file
     - catchment_area (float): The catchment area in km^2
+
+    Returns:
+    - pd.DataFrame: The DataFrame containing the data.
     """
 
     precipitation = pd.read_csv(path_to_file, sep=r'\s+', skiprows=1, header=0)
