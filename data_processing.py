@@ -37,7 +37,7 @@ def preprocess_data(path_to_file: str, catchment_area: float, output_destination
     
     return precipitation
 
-def train_validate_split(data: pd.DataFrame, train_size: float) -> tuple:
+def train_validate_split(data: pd.DataFrame, train_size: float) -> tuple[pd.DataFrame, pd.DataFrame]:
     """This function splits the data into training and validating sets.
     
     Parameters:
