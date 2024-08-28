@@ -181,7 +181,6 @@ class BucketModelOptimizer:
 
         Returns:
         - tuple[dict, pd.DataFrame]: A tuple containing the calibrated parameters and the results of the n-folds calibration. If the method is 'local' or 'global', the second element is None.
-
         """
         # This is a list of tuples. Each tuple contains the lower and upper bounds for each parameter.
         bounds_list = list(self.bounds.values())
