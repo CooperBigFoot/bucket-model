@@ -27,25 +27,28 @@ class BucketModelOptimizer:
     """
     A class to optimize the parameters of a BucketModel.
 
-    Parameters:
-    - model (BucketModel): The bucket model instance to be optimized.
-    - training_data (pd.DataFrame): DataFrame containing the training data with columns 'P_mix', 'T_max', 'T_min', and 'Q'.
-    - validation_data (pd.DataFrame, optional): DataFrame containing the validation data with columns 'P_mix', 'T_max', 'T_min', and 'Q'.
+    This class provides methods to calibrate and optimize the parameters of a BucketModel
+    using various optimization techniques.
+
+    Args:
+        model (BucketModel): The bucket model instance to be optimized.
+        training_data (pd.DataFrame): DataFrame containing the training data with columns 'P_mix', 'T_max', 'T_min', and 'Q'.
+        validation_data (pd.DataFrame, optional): DataFrame containing the validation data with columns 'P_mix', 'T_max', 'T_min', and 'Q'.
 
     Attributes:
-    - method (str): The optimization method to be used ('local', 'global', or 'n-folds').
-    - bounds (dict): Dictionary containing the lower and upper bounds for each parameter.
-    - folds (int): Number of folds for n-folds cross-validation.
+        method (str): The optimization method to be used ('local', 'global', or 'n-folds').
+        bounds (dict): Dictionary containing the lower and upper bounds for each parameter.
+        folds (int): Number of folds for n-folds cross-validation.
 
     Methods:
-    - create_param_dict: Helper function to create a dictionary from two lists of keys and values.
-    - set_options: Set the optimization method, bounds, and number of folds.
-    - _objective_function: Calculate the objective function (NSE) for the optimization algorithm.
-    - single_fold_calibration: Perform a single fold calibration using random initial guesses.
-    - calibrate: Calibrate the model's parameters using the specified method and bounds.
-    - get_best_parameters: Retrieve the best parameters from the calibration results.
-    - score_model: Calculate goodness of fit metrics for the training and validation data.
-    - plot_of_surface: Create a 2D plot of the objective function surface for two parameters.
+        create_param_dict: Helper function to create a dictionary from two lists of keys and values.
+        set_options: Set the optimization method, bounds, and number of folds.
+        _objective_function: Calculate the objective function (NSE) for the optimization algorithm.
+        single_fold_calibration: Perform a single fold calibration using random initial guesses.
+        calibrate: Calibrate the model's parameters using the specified method and bounds.
+        get_best_args: Retrieve the best parameters from the calibration results.
+        score_model: Calculate goodness of fit metrics for the training and validation data.
+        plot_of_surface: Create a 2D plot of the objective function surface for two parameters.
     """
 
     model: BucketModel
@@ -64,21 +67,21 @@ class BucketModelOptimizer:
     def create_param_dict(keys: list, values: list) -> dict:
         """This is a helper function that creates a dictionary from two lists.
 
-        Parameters:
-        - keys (list): A list of keys.
-        - values (list): A list of values.
+        Args:
+            keys (list): A list of keys.
+            values (list): A list of values.
 
         Returns:
-        - dict: A dictionary containing the keys and values."""
+            dict: A dictionary containing the keys and values."""
         return {key: value for key, value in zip(keys, values)}
 
     def set_options(self, method: str, bounds: dict, folds: int = 1) -> None:
         """
         This method sets the optimization method and bounds for the calibration.
 
-        Parameters:
-        - method (str): The optimization method to use. Can be either 'local' or 'global'.
-        - bounds (dict): A dictionary containing the lower and upper bounds for each parameter.
+        Args:
+            method (str): The optimization method to use. Can be either 'local' or 'global'.
+            bounds (dict): A dictionary containing the lower and upper bounds for each parameter.
         """
         possible_methods = ["local", "n-folds"]
 
@@ -98,11 +101,11 @@ class BucketModelOptimizer:
         """
         This is a helper function that calculates the objective function for the optimization algorithm.
 
-        Parameters:
-        - params (list): A list of parameters to calibrate.
+        Args:
+            params (list): A list of parameters to calibrate.
 
         Returns:
-        - float: The value of the objective function.
+            float: The value of the objective function.
         """
         model_copy = self.model.copy()
 
@@ -128,10 +131,10 @@ class BucketModelOptimizer:
     ) -> list[float]:
         """Performs a single fold calibration using random initial guesses.
 
-        Parameters:
-        - bounds_list (list[tuple]): A list of tuples containing the lower and upper bounds for each parameter.
-        - initial_guess (list[float]): A list of initial guesses for the parameters
-        - verbose (bool): A boolean indicating whether to print the current parameter values at each iteration.
+        Args:
+            bounds_list (list[tuple]): A list of tuples containing the lower and upper bounds for each parameter.
+            initial_guess (list[float]): A list of initial guesses for the parameters
+            verbose (bool): A boolean indicating whether to print the current parameter values at each iteration.
         """
 
         if initial_guess is None:
@@ -175,12 +178,12 @@ class BucketModelOptimizer:
         This method calibrates the model's parameters using the method and bounds
         specified in the set_options method. The method can be either 'local' or 'n-folds'.
 
-        Parameters:
-        - initial_guess (list[float]): A list of initial guesses for the parameters. If no initial guesses are provided, uniform random values are sampled from the bounds.
-        - verbose (bool): A boolean indicating whether to print the current parameter values at each iteration.
+        Args:
+            initial_guess (list[float]): A list of initial guesses for the parameters. If no initial guesses are provided, uniform random values are sampled from the bounds.
+            verbose (bool): A boolean indicating whether to print the current parameter values at each iteration.
 
         Returns:
-        - tuple[dict, pd.DataFrame]: A tuple containing the calibrated parameters and the results of the n-folds calibration. If the method is 'local' or 'global', the second element is None.
+            tuple[dict, pd.DataFrame]: A tuple containing the calibrated parameters and the results of the n-folds calibration. If the method is 'local' or 'global', the second element is None.
         """
         # This is a list of tuples. Each tuple contains the lower and upper bounds for each parameter.
         bounds_list = list(self.bounds.values())
@@ -205,11 +208,11 @@ class BucketModelOptimizer:
     def get_best_parameters(self, results: pd.DataFrame) -> dict:
         """This function takes a DataFrame containing the results of the n-folds calibration and returns the one that performs best.
 
-        Parameters:
-        - results (pd.DataFrame): A DataFrame containing the results of the n-folds calibration.
+        Args:
+            results (pd.DataFrame): A DataFrame containing the results of the n-folds calibration.
 
         Returns:
-        - dict: A dictionary containing the best parameters.
+            dict: A dictionary containing the best parameters.
         """
         best_nse = float("-inf")
         best_parameters = None
@@ -234,11 +237,11 @@ class BucketModelOptimizer:
         """
         This function calculates the goodness of fit metrics for a given model.
 
-        Parameters:
-        - metrics (list(str)): A list of strings containing the names of the metrics to calculate. If no metrics are provided, only nse is calculated.
+        Args:
+            metrics (list(str)): A list of strings containing the names of the metrics to calculate. If no metrics are provided, only nse is calculated.
 
         Returns:
-        - dict: A dictionary containing the scores for the training and validation data.
+            dict: A dictionary containing the scores for the training and validation data.
         """
 
         metrics = [metric.lower() for metric in metrics]
@@ -280,16 +283,16 @@ class BucketModelOptimizer:
         """
         This function creates a 2D plot of the objective function surface for two parameters.
 
-        Parameters:
-        - param1 (str): The name of the first parameter.
-        - param2 (str): The name of the second parameter.
-        - n_points (int): The number of points to sample for each parameter.
-        - unit_1 (str): The unit of the first parameter.
-        - unit_2 (str): The unit of the second parameter.
-        - figsize (tuple): The size of the figure.
-        - fontsize (int): The font size of the labels.
-        - cmap (str): The color map to use for the contour plot.
-        - decimal_places (int): The number of decimal places for the contour labels.
+        Args:
+            param1 (str): The name of the first parameter.
+            param2 (str): The name of the second parameter.
+            n_points (int): The number of points to sample for each parameter.
+            unit_1 (str): The unit of the first parameter.
+            unit_2 (str): The unit of the second parameter.
+            figsize (tuple): The size of the figure.
+            fontsize (int): The font size of the labels.
+            cmap (str): The color map to use for the contour plot.
+            decimal_places (int): The number of decimal places for the contour labels.
         """
 
         model_params = self._model_copy.get_parameters()
@@ -356,11 +359,11 @@ class BucketModelOptimizer:
         """
         Perform local sensitivity analysis on the model parameters.
 
-        Parameters:
-        - percent_change (float): The percentage change to apply to the parameters.
+        Args:
+            percent_change (float): The percentage change to apply to the parameters.
 
         Returns:
-        - pd.DataFrame: A DataFrame summarizing the sensitivity analysis results.
+            pd.DataFrame: A DataFrame summarizing the sensitivity analysis results.
         """
 
         def compute_annual_runoff(model: BucketModel) -> float:
@@ -420,13 +423,11 @@ class BucketModelOptimizer:
         """
         Synchronize the working copy and the original model.
 
-        Parameters:
-        - direction (str): The direction of synchronization.
-                           'to_original': Apply changes from working copy to original model (default).
-                           'from_original': Reset working copy to match the original model.
+        Args:
+            direction (str): The direction of synchronization. 'to_original': Apply changes from working copy to original model (default). 'from_original': Reset working copy to match the original model.
 
         Raises:
-        - ValueError: If an invalid direction is provided.
+            ValueError: If an invalid direction is provided.
         """
         if direction == "to_original":
             self.model.update_parameters(self._model_copy.get_parameters())
@@ -436,14 +437,13 @@ class BucketModelOptimizer:
             print("Working copy reset to match the original model.")
         else:
             raise ValueError("Invalid direction. Use 'to_original' or 'from_original'.")
-        
 
     def get_optimized_model(self) -> BucketModel:
         """
         Synchronize the working copy with the original model and return a copy of the optimized model.
 
         Returns:
-        - BucketModel: A copy of the optimized model.
+            BucketModel: A copy of the optimized model.
         """
-        self.sync_models('to_original')
+        self.sync_models("to_original")
         return self.model.copy()
