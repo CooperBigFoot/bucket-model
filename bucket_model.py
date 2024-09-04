@@ -393,7 +393,7 @@ class BucketModel:
         results_df = pd.DataFrame(intermediate_results, index=data.index)
         return results_df
 
-    def update_args(self, args: dict) -> None:
+    def update_parameters(self, parameters: dict) -> None:
         """
         Update the model args.
 
@@ -403,27 +403,27 @@ class BucketModel:
         Raises:
             ValueError: If any of the args are invalid.
         """
-        for key, value in args.items():
+        for key, value in parameters.items():
             if hasattr(self, key):
                 setattr(self, key, value)
             else:
                 raise ValueError(f"Invalid parameter: {key}")
 
-        self.check_parameter_validity()  # Validate after updating all args
+        self.check_parameter_validity()  
 
-    def get_args(self) -> dict:
+    def get_parameters(self) -> dict:
         """
         Return the model args.
 
         Returns:
             dict: A dictionary containing the model args.
         """
-        args = {
+        parameters = {
             field.name: getattr(self, field.name)
             for field in self.__dataclass_fields__.values()
             if field.init
         }
-        return args
+        return parameters
 
     def copy(self) -> "BucketModel":
         """
