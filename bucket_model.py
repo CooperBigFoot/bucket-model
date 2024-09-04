@@ -51,8 +51,8 @@ class BucketModel:
         update_groundwater_storage: Update groundwater storage based on groundwater runoff.
         reset_variables: Reset the state variables to their initial values.
         run: Run the model with provided data.
-        update_args: Update the model args.
-        get_args: Return the model args.
+        update_parameters: Update the model parameters.
+        get_parameters: Return the model parameters.
         copy: Return a copy of the model.
     """
 
@@ -395,13 +395,13 @@ class BucketModel:
 
     def update_parameters(self, parameters: dict) -> None:
         """
-        Update the model args.
+        Update the model parameters.
 
         Args:
-            args (dict): A dictionary containing the args to update.
+            parameters (dict): A dictionary containing the parameters to update.
 
         Raises:
-            ValueError: If any of the args are invalid.
+            ValueError: If any of the parameters are invalid.
         """
         for key, value in parameters.items():
             if hasattr(self, key):
@@ -409,14 +409,14 @@ class BucketModel:
             else:
                 raise ValueError(f"Invalid parameter: {key}")
 
-        self.check_parameter_validity()  
+        self.check_parameter_validity()
 
     def get_parameters(self) -> dict:
         """
-        Return the model args.
+        Return the model parameters.
 
         Returns:
-            dict: A dictionary containing the model args.
+            dict: A dictionary containing the model parameters.
         """
         parameters = {
             field.name: getattr(self, field.name)
