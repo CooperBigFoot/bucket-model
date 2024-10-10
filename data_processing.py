@@ -2,7 +2,7 @@ import pandas as pd
 
 
 def preprocess_data(
-    path_to_file: str, catchment_area: float, output_destination: str = ""
+    path_to_file: str, catchment_area: float, output_destination: str = "", start_year: int = 1986
 ) -> pd.DataFrame:
     """This function takes the .txt file you find on moodle and transforms it into a pandas DataFrame.
 
@@ -10,6 +10,7 @@ def preprocess_data(
         path_to_file (str): The path to the .txt file
         output_destination (str): The path to the new .csv file
         catchment_area (float): The catchment area in km^2
+        start_year (int): The year to start the data from. Default is 1986.
 
     Returns:
         pd.DataFrame: The DataFrame containing the data.
@@ -18,7 +19,7 @@ def preprocess_data(
     precipitation = pd.read_csv(path_to_file, sep=r"\s+", skiprows=1, header=0)
 
     # Create a DatetimeIndex starting from October 1st, 1985
-    date_range = pd.date_range(start="1986-01-01", periods=len(precipitation), freq="D")
+    date_range = pd.date_range(start=f"{start_year}-01-01", periods=len(precipitation), freq="D")
 
     # Set the DatetimeIndex as the new index of the DataFrame
     precipitation.set_index(date_range, inplace=True)

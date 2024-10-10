@@ -82,8 +82,8 @@ class BucketModel:
     )
 
     LR: float = field(init=False, repr=False)
-    H_STATION: float = field(init=False, repr=False)
     H_BASIN: float = field(init=False, repr=False)
+    H_HRU: float = field(init=False, repr=False)
     T_SM: float = field(init=False, repr=False)
     LAT: float = field(init=False, repr=False)
 
@@ -111,12 +111,11 @@ class BucketModel:
         if self.gauge_adj < 0:
             raise ValueError("gauge_adj must be greater than or equal to 0")
 
-    # TODO: H_STATION and H_BASIN should be rethought for the HRU approach. H_STATION now becomes basin mean elevation and H_BASIN becomes mean HRU elevation. When running the model for a single HRU, H_STATION and H_BASIN are the same. Since the data is now for the average basin DELTA_H is 0 in that case.
     def set_catchment_properties(
         self,
         lapse_rate: float,
-        station_elevation: float,
-        basin_elevation: float,
+        basin_mean_elevation: float,
+        hru_mean_elevation: float,
         snowmelt_temp_threshold: float,
         latitude: float,
     ) -> None:
@@ -131,8 +130,8 @@ class BucketModel:
             latitude (float): Latitude in degrees.
         """
         self.LR = lapse_rate
-        self.H_STATION = station_elevation
-        self.H_BASIN = basin_elevation
+        self.H_BASIN = basin_mean_elevation
+        self.H_HRU = hru_mean_elevation
         self.T_SM = snowmelt_temp_threshold
         self.LAT = latitude
 
@@ -174,7 +173,7 @@ class BucketModel:
             Adjust the temperature based on the lapse rate and elevation differences.
         """
         T = (self.T_max + self.T_min) / 2
-        DELTA_H = self.H_STATION - self.H_BASIN
+        DELTA_H = self.H_BASIN - self.H_HRU
         LR_DELTA_H = self.LR * DELTA_H
         self.T_basin = T + LR_DELTA_H
         self.T_max += LR_DELTA_H
