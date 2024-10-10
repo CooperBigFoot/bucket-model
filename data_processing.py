@@ -2,7 +2,11 @@ import pandas as pd
 
 
 def preprocess_data(
-    path_to_file: str, catchment_area: float, output_destination: str = "", start_year: int = 1986
+    path_to_file: str,
+    catchment_area: float,
+    output_destination: str = "",
+    start_year: int = 1986,
+    end_year: int = 1999,
 ) -> pd.DataFrame:
     """This function takes the .txt file you find on moodle and transforms it into a pandas DataFrame.
 
@@ -11,6 +15,7 @@ def preprocess_data(
         output_destination (str): The path to the new .csv file
         catchment_area (float): The catchment area in km^2
         start_year (int): The year to start the data from. Default is 1986.
+        end_year (int): The year to end the data at. Default is 1999.
 
     Returns:
         pd.DataFrame: The DataFrame containing the data.
@@ -19,7 +24,9 @@ def preprocess_data(
     precipitation = pd.read_csv(path_to_file, sep=r"\s+", skiprows=1, header=0)
 
     # Create a DatetimeIndex starting from October 1st, 1985
-    date_range = pd.date_range(start=f"{start_year}-01-01", periods=len(precipitation), freq="D")
+    date_range = pd.date_range(
+        start=f"{start_year}-01-01", periods=len(precipitation), freq="D"
+    )
 
     # Set the DatetimeIndex as the new index of the DataFrame
     precipitation.set_index(date_range, inplace=True)
@@ -32,7 +39,7 @@ def preprocess_data(
     precipitation = precipitation.apply(pd.to_numeric, errors="coerce")
 
     # Only keep data from 1986  to end of 1999
-    precipitation = precipitation.loc["1986":"1999"]
+    precipitation = precipitation.loc[f"{start_year}":f"{end_year}"]
 
     precipitation["Q"] = (
         (precipitation["Q"] * 60 * 60 * 24) / catchment_area / 1000
