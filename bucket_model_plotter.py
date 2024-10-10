@@ -669,7 +669,7 @@ def plot_parameter_kde(
     ax_S_max = plt.subplot2grid(layout, (0, 1))
     ax_fr = plt.subplot2grid(layout, (0, 2))
     ax_rg = plt.subplot2grid(layout, (1, 0))
-    ax_gauge_adj = plt.subplot2grid(layout, (1, 1))
+    ax_snow_line = plt.subplot2grid(layout, (1, 1))
 
     if plot_type == "histplot":
         bins = int(np.sqrt(len(n_fold_results_filtered)))
@@ -689,8 +689,8 @@ def plot_parameter_kde(
             data=n_fold_results_filtered["rg"], ax=ax_rg, color="#007A9A", bins=bins
         )
         sns.histplot(
-            data=n_fold_results_filtered["gauge_adj"],
-            ax=ax_gauge_adj,
+            data=n_fold_results_filtered["snow_line"],
+            ax=ax_snow_line,
             color="#007A9A",
             bins=bins,
         )
@@ -711,8 +711,8 @@ def plot_parameter_kde(
             data=n_fold_results_filtered["rg"], ax=ax_rg, color="#007A9A", fill=True
         )
         sns.kdeplot(
-            data=n_fold_results_filtered["gauge_adj"],
-            ax=ax_gauge_adj,
+            data=n_fold_results_filtered["snow_line"],
+            ax=ax_snow_line,
             color="#007A9A",
             fill=True,
         )
@@ -741,11 +741,11 @@ def plot_parameter_kde(
     ax_rg.grid(color="gray", linestyle="--", linewidth=0.5, alpha=0.5)
     ax_rg.set_xlim(bounds["rg"])
 
-    ax_gauge_adj.set_xlabel("gauge_adj", fontsize=fontsize)
-    ax_gauge_adj.set_ylabel("Density", fontsize=fontsize)
-    ax_gauge_adj.tick_params(which="both", length=10, width=2, labelsize=fontsize)
-    ax_gauge_adj.grid(color="gray", linestyle="--", linewidth=0.5, alpha=0.5)
-    ax_gauge_adj.set_xlim(bounds["gauge_adj"])
+    ax_snow_line.set_xlabel("snow_line", fontsize=fontsize)
+    ax_snow_line.set_ylabel("Density", fontsize=fontsize)
+    ax_snow_line.tick_params(which="both", length=10, width=2, labelsize=fontsize)
+    ax_snow_line.grid(color="gray", linestyle="--", linewidth=0.5, alpha=0.5)
+    ax_snow_line.set_xlim(bounds["snow_line"])
 
     plt.tight_layout()
     sns.despine()

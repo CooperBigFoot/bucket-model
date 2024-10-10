@@ -15,6 +15,7 @@ class BucketModel:
         fr: Fraction of impermeable area at soil saturation (float). [fractional value]
         rg: Mean residence time of water in groundwater (float). [days]
         gauge_adj: Parameter to adjust for undercatch by rain gauge (fractional value, float). [fractional value]
+        snow_line: Temperature threshold for snowfall (float). [°C]
 
     Attributes:
         S: Soil water content (initial condition, float). [mm]
@@ -60,7 +61,8 @@ class BucketModel:
     S_max: float
     fr: float
     rg: float
-    gauge_adj: float
+    snow_line: float
+    # gauge_adj: float
 
     S: float = field(default=10, init=False, repr=False)
     S_gw: float = field(default=100, init=False, repr=False)
@@ -108,8 +110,10 @@ class BucketModel:
             raise ValueError("fr must be between 0 and 1")
         if self.rg < 1:
             raise ValueError("rg must be greater than 1")
-        if self.gauge_adj < 0:
-            raise ValueError("gauge_adj must be greater than or equal to 0")
+        if self.snow_line < 0:
+            raise ValueError("snow_line must be greater than or equal to 0")
+        # if self.gauge_adj < 0:
+        #     raise ValueError("gauge_adj must be greater than or equal to 0")
 
     def set_catchment_properties(
         self,
@@ -179,14 +183,14 @@ class BucketModel:
         self.T_max += LR_DELTA_H
         self.T_min += LR_DELTA_H
 
-    def gauge_adjustment(self) -> None:
-        """
-        Adjust for undercatch by the rain gauge.
+    # def gauge_adjustment(self) -> None:
+    #     """
+    #     Adjust for undercatch by the rain gauge.
 
-        Process:
-            Multiply precipitation by (1 + gauge adjustment parameter).
-        """
-        self.Precip = self.Precip * (1 + self.gauge_adj)
+    #     Process:
+    #         Multiply precipitation by (1 + gauge adjustment parameter).
+    #     """
+    #     self.Precip = self.Precip * (1 + self.gauge_adj)
 
     def partition_precipitation(self) -> None:
         """
@@ -197,12 +201,12 @@ class BucketModel:
             If maximum temperature is below freezing, all precipitation is snowfall.
             Otherwise, partition based on temperature range.
         """
-        if self.T_min > 0:
+        if self.T_min > self.snow_line:
             self.Rain = self.Precip
-            self.Snow = 0
-        elif self.T_max <= 0:
+            self.Snow = self.snow_line
+        elif self.T_max <= self.snow_line:
             self.Snow = self.Precip
-            self.Rain = 0
+            self.Rain = self.snow_line
         else:
             rain_fraction = self.T_max / (self.T_max - self.T_min)
             self.Rain = self.Precip * rain_fraction
@@ -379,7 +383,7 @@ class BucketModel:
             self.Precip = row["P_mix"]
             self.T_max = row["T_max"]
             self.T_min = row["T_min"]
-            self.gauge_adjustment()
+            # self.gauge_adjustment()
             self.adjust_temperature()
             self.partition_precipitation()
             self.compute_snow_melt()
