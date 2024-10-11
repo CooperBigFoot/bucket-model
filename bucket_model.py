@@ -14,8 +14,8 @@ class BucketModel:
         S_max: Maximum soil water storage (float). [mm]
         fr: Fraction of impermeable area at soil saturation (float). [fractional value]
         rg: Mean residence time of water in groundwater (float). [days]
+        snow_threshold_temp: Temperature threshold for snowfall (float). [°C]
         gauge_adj: Parameter to adjust for undercatch by rain gauge (fractional value, float). [fractional value]
-        snow_line: Temperature threshold for snowfall (float). [°C]
 
     Attributes:
         S: Soil water content (initial condition, float). [mm]
@@ -61,7 +61,7 @@ class BucketModel:
     S_max: float
     fr: float
     rg: float
-    snow_line: float
+    snow_threshold_temp: float
     # gauge_adj: float
 
     S: float = field(default=10, init=False, repr=False)
@@ -110,10 +110,6 @@ class BucketModel:
             raise ValueError("fr must be between 0 and 1")
         if self.rg < 1:
             raise ValueError("rg must be greater than 1")
-        if self.snow_line < 0:
-            raise ValueError("snow_line must be greater than or equal to 0")
-        # if self.gauge_adj < 0:
-        #     raise ValueError("gauge_adj must be greater than or equal to 0")
 
     def set_catchment_properties(
         self,
@@ -201,12 +197,12 @@ class BucketModel:
             If maximum temperature is below freezing, all precipitation is snowfall.
             Otherwise, partition based on temperature range.
         """
-        if self.T_min > self.snow_line:
+        if self.T_min > self.snow_threshold_temp:
             self.Rain = self.Precip
-            self.Snow = self.snow_line
-        elif self.T_max <= self.snow_line:
+            self.Snow = self.snow_threshold_temp
+        elif self.T_max <= self.snow_threshold_temp:
             self.Snow = self.Precip
-            self.Rain = self.snow_line
+            self.Rain = self.snow_threshold_temp
         else:
             rain_fraction = self.T_max / (self.T_max - self.T_min)
             self.Rain = self.Precip * rain_fraction
