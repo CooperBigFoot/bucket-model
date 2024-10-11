@@ -1,4 +1,6 @@
 import pandas as pd
+from datetime import datetime, timedelta
+from typing import Tuple, Optional
 
 
 def preprocess_data(
@@ -6,49 +8,61 @@ def preprocess_data(
     catchment_area: float,
     output_destination: str = "",
     start_year: int = 1986,
-    end_year: int = 1999,
+    filter_dates: Optional[Tuple[int, int]] = None,
 ) -> pd.DataFrame:
-    """This function takes the .txt file you find on moodle and transforms it into a pandas DataFrame.
+    """This function takes the .txt file, transforms it into a pandas DataFrame, and optionally filters the data.
 
     Args:
         path_to_file (str): The path to the .txt file
-        output_destination (str): The path to the new .csv file
         catchment_area (float): The catchment area in km^2
+        output_destination (str): The path to the new .csv file
         start_year (int): The year to start the data from. Default is 1986.
-        end_year (int): The year to end the data at. Default is 1999.
+        filter_dates (Optional[Tuple[int, int]]): A tuple of (start_year, end_year) to filter the data. Default is None.
 
     Returns:
-        pd.DataFrame: The DataFrame containing the data.
+        pd.DataFrame: The DataFrame containing the processed and filtered data.
     """
 
-    precipitation = pd.read_csv(path_to_file, sep=r"\s+", skiprows=1, header=0)
+    # Read the file, skipping the header lines
+    df = pd.read_csv(path_to_file, sep="\s+", skiprows=1)
 
-    # Create a DatetimeIndex starting from October 1st, 1985
-    date_range = pd.date_range(
-        start=f"{start_year}-01-01", periods=len(precipitation), freq="D"
-    )
+    # Extract the start date from the file header
+    with open(path_to_file, "r") as file:
+        header = file.readline().strip()
 
-    # Set the DatetimeIndex as the new index of the DataFrame
-    precipitation.set_index(date_range, inplace=True)
+    # Parse the date range from the header
+    date_range = header.split(": ")[1].split(" - ")[0]
+    file_start_date = datetime.strptime(date_range, "%d/%m/%Y")
 
-    # Rename index to 'date'
-    precipitation.index.name = "date"
+    # Convert index to datetime
+    def day_to_date(day):
+        return file_start_date + timedelta(days=int(day))
 
-    # Set date to datetime format
-    precipitation.index = pd.to_datetime(precipitation.index)
-    precipitation = precipitation.apply(pd.to_numeric, errors="coerce")
+    # Apply the conversion to create a new 'date' column
+    df["date"] = df.index.map(day_to_date)
 
-    # Only keep data from 1986  to end of 1999
-    precipitation = precipitation.loc[f"{start_year}":f"{end_year}"]
+    # Set 'date' as the index
+    df.set_index("date", inplace=True)
 
-    precipitation["Q"] = (
-        (precipitation["Q"] * 60 * 60 * 24) / catchment_area / 1000
-    )  # Convert m^3/s to mm/day
+    # Convert all columns to numeric, replacing any non-numeric values with NaN
+    df = df.apply(pd.to_numeric, errors="coerce")
+
+    # Filter the DataFrame based on start_year
+    df = df.loc[f"{start_year}":]
+
+    # Apply additional filtering if filter_dates is provided
+    if filter_dates:
+        filter_start, filter_end = filter_dates
+        df = df.loc[f"{filter_start}":f"{filter_end}"]
+
+    # Convert Q from m^3/s to mm/day
+    if "Q" in df.columns:
+        df["Q"] = (df["Q"] * 60 * 60 * 24) / catchment_area / 1000
 
     if output_destination:
-        precipitation.to_csv(output_destination, index=True, header=True)
+        df.to_csv(output_destination, index=True, header=True)
 
-    return precipitation
+    return df
 
 
 def train_validate_split(
