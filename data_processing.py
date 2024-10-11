@@ -7,7 +7,6 @@ def preprocess_data(
     path_to_file: str,
     catchment_area: float,
     output_destination: str = "",
-    start_year: int = 1986,
     filter_dates: Optional[Tuple[int, int]] = None,
 ) -> pd.DataFrame:
     """This function takes the .txt file, transforms it into a pandas DataFrame, and optionally filters the data.
@@ -16,7 +15,6 @@ def preprocess_data(
         path_to_file (str): The path to the .txt file
         catchment_area (float): The catchment area in km^2
         output_destination (str): The path to the new .csv file
-        start_year (int): The year to start the data from. Default is 1986.
         filter_dates (Optional[Tuple[int, int]]): A tuple of (start_year, end_year) to filter the data. Default is None.
 
     Returns:
@@ -24,7 +22,7 @@ def preprocess_data(
     """
 
     # Read the file, skipping the header lines
-    df = pd.read_csv(path_to_file, sep="\s+", skiprows=1)
+    df = pd.read_csv(path_to_file, sep=r"\s+", skiprows=1)
 
     # Extract the start date from the file header
     with open(path_to_file, "r") as file:
@@ -47,10 +45,7 @@ def preprocess_data(
     # Convert all columns to numeric, replacing any non-numeric values with NaN
     df = df.apply(pd.to_numeric, errors="coerce")
 
-    # Filter the DataFrame based on start_year
-    df = df.loc[f"{start_year}":]
-
-    # Apply additional filtering if filter_dates is provided
+    # Apply filtering if filter_dates is provided
     if filter_dates:
         filter_start, filter_end = filter_dates
         df = df.loc[f"{filter_start}":f"{filter_end}"]
