@@ -1,5 +1,5 @@
-The meteo input files are updated on 10.10.2024 by J. Blagojevic. THe new climatic input data are no longer station data but extracted basin-mean daily values from the meteoswiss products RhiresD, TmaxD, TminD. THe streamflow values are coppied from the older, statio-based input files.
+The meteo input files are updated on 10.10.2024 by J. Blagojevic. The new climatic input data are no longer station data but extracted basin-mean daily values from the MeteoSwiss products RhiresD, TmaxD, TminD. The streamflow values are coppied from the older, statio-based input files.
 
-THere are two data files for each catchment:
+There are two data files for each catchment:
 -...METEO_NEW, the defualt input files with complete data for all the days (1.10.1985-30.9.2000)
--...METEO_FULL, the longer input files with incomplete data (no streamflow for: 1.10.1985-30.9.2000), the data covers 1.1.1971-31.12.2023
+-...METEO_FULL, the longer input files with incomplete data (streamflow only for: 1.10.1985-30.9.2000), the data covers 1.1.1971-31.12.2023
