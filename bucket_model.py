@@ -199,10 +199,10 @@ class BucketModel:
         """
         if self.T_min > self.snow_threshold_temp:
             self.Rain = self.Precip
-            self.Snow = self.snow_threshold_temp
+            self.Snow = 0
         elif self.T_max <= self.snow_threshold_temp:
             self.Snow = self.Precip
-            self.Rain = self.snow_threshold_temp
+            self.Rain = 0
         else:
             rain_fraction = self.T_max / (self.T_max - self.T_min)
             self.Rain = self.Precip * rain_fraction
