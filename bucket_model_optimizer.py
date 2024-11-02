@@ -193,7 +193,7 @@ class BucketModelOptimizer:
                 executor.map(
                     self.single_fold_calibration,
                     [bounds_list] * self.folds,
-                    [None] * self.folds,
+                    [initial_guess] * self.folds,
                     [verbose] * self.folds,
                 )
             )
