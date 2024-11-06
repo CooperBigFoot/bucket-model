@@ -89,11 +89,16 @@ class BucketModel:
     T_SM: float = field(init=False, repr=False)
     LAT: float = field(init=False, repr=False)
 
+    _initial_S: float = field(default=10, init=False, repr=False)
+    _initial_S_gw: float = field(default=100, init=False, repr=False)
+    _initial_Snow_accum: float = field(default=0, init=False, repr=False)
+
     def __post_init__(self):
         """
         Check the validity of the model args after initialization.
         """
         self.check_parameter_validity()
+        self._store_initial_conditions()
 
     def check_parameter_validity(self):
         """
@@ -110,6 +115,12 @@ class BucketModel:
             raise ValueError("fr must be between 0 and 1")
         if self.rg < 1:
             raise ValueError("rg must be greater than 1")
+
+    def _store_initial_conditions(self) -> None:
+        """Store the current state as initial conditions."""
+        self._initial_S = self.S
+        self._initial_S_gw = self.S_gw
+        self._initial_Snow_accum = self.Snow_accum
 
     def set_catchment_properties(
         self,
@@ -135,6 +146,12 @@ class BucketModel:
         self.T_SM = snowmelt_temp_threshold
         self.LAT = latitude
 
+    def reset_state(self) -> None:
+        """Reset all state variables to their initial conditions."""
+        self.S = self._initial_S
+        self.S_gw = self._initial_S_gw
+        self.Snow_accum = self._initial_Snow_accum
+
     def change_initial_conditions(self, S: float = None, S_gw: float = None) -> None:
         """
         Change the initial conditions of the model.
@@ -143,13 +160,13 @@ class BucketModel:
             S (float, optional): New initial soil water content (mm). Must be between 0 and S_max.
             S_gw (float, optional): New initial groundwater storage (mm). Must be non-negative.
 
-
         Raises:
             ValueError: If any of the provided values are outside their valid ranges.
         """
         if S is not None:
             if 0 <= S <= self.S_max:
                 self.S = S
+                self._initial_S = S
             else:
                 raise ValueError(
                     f"Initial soil water content must be between 0 and {self.S_max} mm."
@@ -158,6 +175,7 @@ class BucketModel:
         if S_gw is not None:
             if S_gw >= 0:
                 self.S_gw = S_gw
+                self._initial_S_gw = S_gw
             else:
                 raise ValueError("Initial groundwater storage must be non-negative.")
 
@@ -361,6 +379,8 @@ class BucketModel:
         Returns:
             pd.DataFrame: DataFrame with the simulation results.
         """
+        self.reset_state()
+
         intermediate_results = {
             "ET": [],
             "Q_s": [],

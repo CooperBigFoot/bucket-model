@@ -46,7 +46,6 @@ class BucketModelOptimizer:
         _objective_function: Calculate the objective function (NSE) for the optimization algorithm.
         single_fold_calibration: Perform a single fold calibration using random initial guesses.
         calibrate: Calibrate the model's parameters using the specified method and bounds.
-        get_best_args: Retrieve the best parameters from the calibration results.
         score_model: Calculate goodness of fit metrics for the training and validation data.
         plot_of_surface: Create a 2D plot of the objective function surface for two parameters.
     """
@@ -372,26 +371,29 @@ class BucketModelOptimizer:
             return annual_runoff.mean()
 
         original_params = self._model_copy.get_parameters().copy()
-        original_runoff = compute_annual_runoff(self._model_copy)
+        base_model = self._model_copy.copy()
+        original_runoff = compute_annual_runoff(base_model)
 
         sensitivity_results = []
 
         for param in original_params.keys():
             param_value = original_params[param]
 
+            # Create fresh model instances for each test
+            model_plus = base_model.copy()
+            model_minus = base_model.copy()
+
+            # Test positive change
             params_plus = original_params.copy()
-
             params_plus[param] = param_value * (1 + percent_change / 100)
+            model_plus.update_parameters(params_plus)
+            runoff_plus = compute_annual_runoff(model_plus)
 
-            self._model_copy.update_parameters(params_plus)
-            runoff_plus = compute_annual_runoff(self._model_copy)
-
+            # Test negative change
             params_minus = original_params.copy()
-
             params_minus[param] = param_value * (1 - percent_change / 100)
-
-            self._model_copy.update_parameters(params_minus)
-            runoff_minus = compute_annual_runoff(self._model_copy)
+            model_minus.update_parameters(params_minus)
+            runoff_minus = compute_annual_runoff(model_minus)
 
             delta_P_plus = param_value * (percent_change / 100)
             delta_P_minus = -param_value * (percent_change / 100)
@@ -414,8 +416,6 @@ class BucketModelOptimizer:
                     f"Sensitivity -{percent_change}%": sensitivity_minus,
                 }
             )
-
-        self._model_copy.update_parameters(original_params)
 
         return pd.DataFrame(sensitivity_results)
 
