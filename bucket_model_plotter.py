@@ -556,7 +556,7 @@ def plot_precipitation_ts(
 
     return precip_line
 
-
+# TODO: find way to force students to plot daily
 def plot_timeseries(
     results: pd.DataFrame,
     observed: pd.DataFrame,

@@ -1,455 +1,504 @@
 import pandas as pd
 import numpy as np
-from dataclasses import dataclass, field
-import copy
+from typing import Dict, Optional
+from datetime import datetime
 
 
-@dataclass
 class BucketModel:
     """
-    A class to simulate hydrological processes using a simple bucket model. These processes include: Evapotranspiration, Surface Runoff, Groundwater Runoff, Snow Accumulation, Soil Storage, Groundwater Storage, Snow Mel, Rainfall and Snowfall.
-
-    Args:
-        k: Degree-day snowmelt parameter (float). [mm/°C/day]
-        S_max: Maximum soil water storage (float). [mm]
-        fr: Fraction of impermeable area at soil saturation (float). [fractional value]
-        rg: Mean residence time of water in groundwater (float). [days]
-        snow_threshold_temp: Temperature threshold for snowfall (float). [°C]
-        gauge_adj: Parameter to adjust for undercatch by rain gauge (fractional value, float). [fractional value]
-
-    Attributes:
-        S: Soil water content (initial condition, float). [mm]
-        S_gw: Groundwater storage (initial condition, float). [mm]
-        T_basin: Basin temperature (float). [°C]
-        T_max: Maximum temperature (float). [°C]
-        T_min: Minimum temperature (float). [°C]
-        Precip: Precipitation (float). [mm]
-        Rain: Rainfall (float). [mm]
-        Snow: Snowfall (float). [mm]
-        Snow_accum: Snow accumulation (cover, float). [mm]
-        Snow_melt: Snow melt (float). [mm]
-        PET: Potential evapotranspiration (float). [mm/day]
-        ET: Evapotranspiration (float). [mm/day]
-        Q_s: Surface runoff (float). [mm/day]
-        Q_gw: Groundwater runoff (float). [mm/day]
-        Percol: Percolation (float). [mm/day]
-        Date: Date (pd.Timestamp). [YYYY-MM-DD]
-
-    Methods:
-        set_catchment_properties: Set the values of the constants.
-        change_initial_conditions: Change the initial conditions of the model (not implemented).
-        adjust_temperature: Adjust the temperature based on lapse rate and elevations.
-        gauge_adjustment: Adjust for undercatch by the rain gauge.
-        partition_precipitation: Partition precipitation into rainfall and snowfall.
-        compute_snow_melt: Compute snowmelt based on basin temperature.
-        update_snow_accum: Update snow cover based on snowfall and snowmelt.
-        compute_julianday: Compute the Julian day based on self.Date.
-        compute_evapotranspiration: Compute evapotranspiration using the Hamon method.
-        surface_runoff: Compute surface runoff.
-        percolation: Compute percolation.
-        update_soil_moisture: Implement the water dynamics in the soil bucket.
-        groundwater_runoff: Compute groundwater runoff with the linear reservoir concept.
-        update_groundwater_storage: Update groundwater storage based on groundwater runoff.
-        reset_variables: Reset the state variables to their initial values.
-        run: Run the model with provided data.
-        update_parameters: Update the model parameters.
-        get_parameters: Return the model parameters.
-        copy: Return a copy of the model.
+    A simple hydrological bucket model for simulating watershed processes.
+    
+    This model simulates snow accumulation and melt, evapotranspiration,
+    surface runoff, soil moisture dynamics, and groundwater flow.
+    
+    Parameters
+    ----------
+    params : Dict[str, float]
+        Dictionary of model parameters:
+        - k: Degree-day snowmelt parameter [mm/°C/day]
+        - S_max: Maximum soil water storage [mm]
+        - fr: Fraction of impermeable area at soil saturation [-]
+        - rg: Mean residence time of water in groundwater [days]
+        - snow_threshold_temp: Temperature threshold for snowfall [°C]
     """
+    
+    def __init__(self, params: Dict[str, float]):
+        # Model parameters
+        self.k: float = params.get("k", 1.5)  # Degree-day factor [mm/°C/day]
+        self.S_max: float = params.get("S_max", 100)  # Max soil water capacity [mm]
+        self.fr: float = params.get("fr", 0.2)  # Impermeable area fraction [-]
+        self.rg: float = params.get("rg", 10)  # Groundwater residence time [days]
+        self.snow_threshold_temp: float = params.get("snow_threshold_temp", 0.0)  # Snow threshold [°C]
+        self.snowmelt_temp_threshold: float = 0.0  # Snowmelt temperature threshold [°C]
+        
+        # Validate parameters
+        self._validate_params()
+        
+        # State variables
+        self.soil_moisture: float = 10.0  # Soil water content [mm]
+        self.groundwater: float = 100.0  # Groundwater storage [mm]
+        self.snow_cover: float = 0.0  # Snow accumulation [mm]
+        
+        # Temperature variables
+        self.basin_temp: float = 0.0  # Basin temperature [°C]
+        self.temp_max: float = 0.0  # Maximum temperature [°C]
+        self.temp_min: float = 0.0  # Minimum temperature [°C]
+        
+        # Flux variables
+        self.precip: float = 0.0  # Total precipitation [mm]
+        self.rain: float = 0.0  # Rainfall [mm]
+        self.snow: float = 0.0  # Snowfall [mm]
+        self.snowmelt: float = 0.0  # Snowmelt [mm/day]
+        self.pet: float = 0.0  # Potential evapotranspiration [mm/day]
+        self.et: float = 0.0  # Actual evapotranspiration [mm/day]
+        self.surface_runoff: float = 0.0  # Surface runoff [mm/day]
+        self.groundwater_runoff: float = 0.0  # Groundwater runoff [mm/day]
+        self.percolation: float = 0.0  # Percolation [mm/day]
+        
+        # Catchment properties
+        self.lapse_rate: float = 0.5 / 100  # Temperature lapse rate [°C/m]
+        self.basin_mean_elevation: float = 1000.0  # Basin mean elevation [m.a.s.l.]
+        self.hru_mean_elevation: float = 1000.0  # HRU mean elevation [m.a.s.l.]
+        self.latitude: float = 45.0  # Latitude [°]
+        
+        # Current simulation date
+        self.date: Optional[datetime] = None
 
-    k: float
-    S_max: float
-    fr: float
-    rg: float
-    snow_threshold_temp: float
-    # gauge_adj: float
+        # Initial state values for reset
+        self._initial_soil_moisture: float = self.soil_moisture
+        self._initial_groundwater: float = self.groundwater
+        self._initial_snow_cover: float = self.snow_cover
 
-    S: float = field(default=10, init=False, repr=False)
-    S_gw: float = field(default=100, init=False, repr=False)
-    T_basin: float = field(default=0, init=False, repr=False)
-    T_max: float = field(default=0, init=False, repr=False)
-    T_min: float = field(default=0, init=False, repr=False)
-    Precip: float = field(default=0, init=False, repr=False)
-    Rain: float = field(default=0, init=False, repr=False)
-    Snow: float = field(default=0, init=False, repr=False)
-    Snow_accum: float = field(default=0, init=False, repr=False)
-    Snow_melt: float = field(default=0, init=False, repr=False)
-    PET: float = field(default=0, init=False, repr=False)
-    ET: float = field(default=0, init=False, repr=False)
-    Q_s: float = field(default=0, init=False, repr=False)
-    Q_gw: float = field(default=0, init=False, repr=False)
-    Percol: float = field(default=0, init=False, repr=False)
-    Date: pd.Timestamp = field(
-        default=pd.Timestamp("2000-08-14"), init=False, repr=False
-    )
-
-    LR: float = field(init=False, repr=False)
-    H_BASIN: float = field(init=False, repr=False)
-    H_HRU: float = field(init=False, repr=False)
-    T_SM: float = field(init=False, repr=False)
-    LAT: float = field(init=False, repr=False)
-
-    _initial_S: float = field(default=10, init=False, repr=False)
-    _initial_S_gw: float = field(default=100, init=False, repr=False)
-    _initial_Snow_accum: float = field(default=0, init=False, repr=False)
-
-    def __post_init__(self):
+    def _validate_params(self) -> None:
         """
-        Check the validity of the model args after initialization.
-        """
-        self.check_parameter_validity()
-        self._store_initial_conditions()
-
-    def check_parameter_validity(self):
-        """
-        Check the validity of the model args.
-
-        Raises:
-            ValueError: If any of the args are invalid.
+        Validate model parameters to ensure they are physically reasonable.
+        
+        Raises
+        ------
+        ValueError
+            If any parameter is outside its valid range
         """
         if self.k <= 0:
-            raise ValueError("k must be positive")
+            raise ValueError(f"k must be positive, got {self.k}")
+
         if self.S_max <= 0:
-            raise ValueError("S_max must be positive")
-        if self.fr < 0 or self.fr > 1:
-            raise ValueError("fr must be between 0 and 1")
+            raise ValueError(f"S_max must be positive, got {self.S_max}")
+
+        if not 0 <= self.fr <= 1:
+            raise ValueError(f"fr must be between 0 and 1, got {self.fr}")
+
         if self.rg < 1:
-            raise ValueError("rg must be greater than 1")
-
-    def _store_initial_conditions(self) -> None:
-        """Store the current state as initial conditions."""
-        self._initial_S = self.S
-        self._initial_S_gw = self.S_gw
-        self._initial_Snow_accum = self.Snow_accum
-
-    def set_catchment_properties(
-        self,
-        lapse_rate: float,
-        basin_mean_elevation: float,
-        hru_mean_elevation: float,
-        snowmelt_temp_threshold: float,
-        latitude: float,
-    ) -> None:
-        """
-        Set the values of the catchment properties.
-
-        Args:
-            lapse_rate (float): Lapse rate (°C/m).
-            station_elevation (float): Station elevation (m.a.s.l).
-            basin_elevation (float): Basin elevation (m.a.s.l).
-            snowmelt_temp_threshold (float): Snowmelt temperature threshold (°C).
-            latitude (float): Latitude in degrees.
-        """
-        self.LR = lapse_rate
-        self.H_BASIN = basin_mean_elevation
-        self.H_HRU = hru_mean_elevation
-        self.T_SM = snowmelt_temp_threshold
-        self.LAT = latitude
+            raise ValueError(f"rg must be greater than 1, got {self.rg}")
 
     def reset_state(self) -> None:
-        """Reset all state variables to their initial conditions."""
-        self.S = self._initial_S
-        self.S_gw = self._initial_S_gw
-        self.Snow_accum = self._initial_Snow_accum
+        """
+        Reset model state variables to their initial values.
+        
+        This is useful when running multiple simulations with the same model instance.
+        """
+        self.soil_moisture = self._initial_soil_moisture
+        self.groundwater = self._initial_groundwater
+        self.snow_cover = self._initial_snow_cover
+        
+        # Reset flux variables
+        self.precip = 0.0
+        self.rain = 0.0
+        self.snow = 0.0
+        self.snowmelt = 0.0
+        self.pet = 0.0
+        self.et = 0.0
+        self.surface_runoff = 0.0
+        self.groundwater_runoff = 0.0
+        self.percolation = 0.0
+        
+        # Reset temperature variables
+        self.basin_temp = 0.0
+        self.temp_max = 0.0
+        self.temp_min = 0.0
 
-    def change_initial_conditions(self, S: float = None, S_gw: float = None) -> None:
+    def set_catchment_properties(self, properties: Dict[str, float]) -> None:
+        """
+        Set catchment properties for the model.
+        
+        Parameters
+        ----------
+        properties : Dict[str, float]
+            Dictionary containing catchment properties:
+            - lapse_rate: Temperature lapse rate [°C/m]
+            - basin_mean_elevation: Basin mean elevation [m.a.s.l.]
+            - hru_mean_elevation: HRU mean elevation [m.a.s.l.]
+            - snowmelt_temp_threshold: Temperature threshold for snowmelt [°C]
+            - latitude: Latitude of the catchment [°]
+        """
+        if "lapse_rate" in properties:
+            self.lapse_rate = properties["lapse_rate"]
+        if "basin_mean_elevation" in properties:
+            self.basin_mean_elevation = properties["basin_mean_elevation"]
+        if "hru_mean_elevation" in properties:
+            self.hru_mean_elevation = properties["hru_mean_elevation"]
+        if "snowmelt_temp_threshold" in properties:
+            self.snowmelt_temp_threshold = properties["snowmelt_temp_threshold"]
+        if "latitude" in properties:
+            self.latitude = properties["latitude"]
+        
+        print("Catchment properties set:")
+        print(f"  Lapse rate: {self.lapse_rate} °C/m")
+        print(f"  Basin mean elevation: {self.basin_mean_elevation} m.a.s.l.")
+        print(f"  HRU mean elevation: {self.hru_mean_elevation} m.a.s.l.")
+        print(f"  Snowmelt temperature threshold: {self.snowmelt_temp_threshold} °C")
+        print(f"  Latitude: {self.latitude}°")
+
+    def change_initial_conditions(self, soil_moisture: Optional[float] = None, 
+                                 groundwater: Optional[float] = None,
+                                 snow_cover: Optional[float] = None) -> None:
         """
         Change the initial conditions of the model.
-
-        Args:
-            S (float, optional): New initial soil water content (mm). Must be between 0 and S_max.
-            S_gw (float, optional): New initial groundwater storage (mm). Must be non-negative.
-
-        Raises:
-            ValueError: If any of the provided values are outside their valid ranges.
+        
+        Parameters
+        ----------
+        soil_moisture : float, optional
+            New initial soil moisture [mm]
+        groundwater : float, optional
+            New initial groundwater storage [mm]
+        snow_cover : float, optional
+            New initial snow cover [mm]
+            
+        Raises
+        ------
+        ValueError
+            If any value is outside its valid range
         """
-        if S is not None:
-            if 0 <= S <= self.S_max:
-                self.S = S
-                self._initial_S = S
+        if soil_moisture is not None:
+            if 0 <= soil_moisture <= self.S_max:
+                self.soil_moisture = soil_moisture
+                self._initial_soil_moisture = soil_moisture
             else:
-                raise ValueError(
-                    f"Initial soil water content must be between 0 and {self.S_max} mm."
-                )
-
-        if S_gw is not None:
-            if S_gw >= 0:
-                self.S_gw = S_gw
-                self._initial_S_gw = S_gw
+                raise ValueError(f"Soil moisture must be between 0 and {self.S_max} mm")
+        
+        if groundwater is not None:
+            if groundwater >= 0:
+                self.groundwater = groundwater
+                self._initial_groundwater = groundwater
             else:
-                raise ValueError("Initial groundwater storage must be non-negative.")
-
-        print("Initial conditions updated successfully.")
-        print(f"Current initial conditions: S = {self.S} mm, S_gw = {self.S_gw} mm")
+                raise ValueError("Groundwater storage must be non-negative")
+        
+        if snow_cover is not None:
+            if snow_cover >= 0:
+                self.snow_cover = snow_cover
+                self._initial_snow_cover = snow_cover
+            else:
+                raise ValueError("Snow cover must be non-negative")
+        
+        print("Initial conditions updated:")
+        print(f"  Soil moisture: {self.soil_moisture} mm")
+        print(f"  Groundwater storage: {self.groundwater} mm")
+        print(f"  Snow cover: {self.snow_cover} mm")
 
     def adjust_temperature(self) -> None:
         """
-        Adjust the temperature based on lapse rate and elevations.
-
-        Process:
-            Compute the mean basin temperature.
-            Adjust the temperature based on the lapse rate and elevation differences.
+        Adjust temperature based on lapse rate and elevation difference.
+        
+        This method calculates the basin temperature based on the station temperature
+        and the elevation difference between the basin and the station.
         """
-        T = (self.T_max + self.T_min) / 2
-        DELTA_H = self.H_BASIN - self.H_HRU
-        LR_DELTA_H = self.LR * DELTA_H
-        self.T_basin = T + LR_DELTA_H
-        self.T_max += LR_DELTA_H
-        self.T_min += LR_DELTA_H
-
-    # def gauge_adjustment(self) -> None:
-    #     """
-    #     Adjust for undercatch by the rain gauge.
-
-    #     Process:
-    #         Multiply precipitation by (1 + gauge adjustment parameter).
-    #     """
-    #     self.Precip = self.Precip * (1 + self.gauge_adj)
+        T_mean = (self.temp_max + self.temp_min) / 2
+        delta_h = self.basin_mean_elevation - self.hru_mean_elevation
+        lr_adjustment = self.lapse_rate * delta_h
+        
+        self.basin_temp = T_mean + lr_adjustment
+        self.temp_max += lr_adjustment
+        self.temp_min += lr_adjustment
 
     def partition_precipitation(self) -> None:
         """
-        Partition precipitation into rainfall and snowfall based on temperature thresholds.
-
-        Process:
-            If minimum temperature is above freezing, all precipitation is rainfall.
-            If maximum temperature is below freezing, all precipitation is snowfall.
-            Otherwise, partition based on temperature range.
+        Partition precipitation into rainfall and snowfall.
+        
+        The partitioning is based on the daily air temperature following
+        the procedure described in the PRMS model.
         """
-        if self.T_min > self.snow_threshold_temp:
-            self.Rain = self.Precip
-            self.Snow = 0
-        elif self.T_max <= self.snow_threshold_temp:
-            self.Snow = self.Precip
-            self.Rain = 0
+        if self.temp_min > self.snow_threshold_temp:
+            # All precipitation is rain when min temp is above threshold
+            self.rain = self.precip
+            self.snow = 0.0
+        elif self.temp_max <= self.snow_threshold_temp:
+            # All precipitation is snow when max temp is below threshold
+            self.snow = self.precip
+            self.rain = 0.0
         else:
-            rain_fraction = self.T_max / (self.T_max - self.T_min)
-            self.Rain = self.Precip * rain_fraction
-            self.Snow = self.Precip - self.Rain
+            # Mixed precipitation based on temperature range
+            # Assumes linear distribution of temperature between min and max
+            rain_fraction = self.temp_max / (self.temp_max - self.temp_min)
+            self.rain = self.precip * rain_fraction
+            self.snow = self.precip - self.rain
 
     def compute_snow_melt(self) -> None:
         """
-        Compute snowmelt based on basin temperature.
-
-        Process:
-            If basin temperature is below the snowmelt threshold, no snowmelt occurs.
-            If basin temperature is above the snowmelt threshold, melt occurs as long as there is snow cover.
+        Compute snowmelt using the degree-day method.
+        
+        Snowmelt occurs when the basin temperature exceeds the
+        snowmelt temperature threshold, at a rate determined by
+        the degree-day factor k.
         """
-        if self.T_basin <= self.T_SM:
-            self.Snow_melt = 0
+        if self.basin_temp <= self.snowmelt_temp_threshold:
+            # No snowmelt when temperature is below threshold
+            self.snowmelt = 0.0
         else:
-            self.Snow_melt = min(self.k * (self.T_basin - self.T_SM), self.Snow_accum)
+            # Snowmelt based on temperature excess and available snow cover
+            potential_melt = self.k * (self.basin_temp - self.snowmelt_temp_threshold)
+            self.snowmelt = min(potential_melt, self.snow_cover)
 
-    def update_snow_accum(self) -> None:
+    def update_snow_cover(self) -> None:
         """
         Update snow cover based on snowfall and snowmelt.
-
-        Process:
-            Add snowfall to snow accumulation.
-            Subtract snowmelt from snow accumulation.
+        
+        Snow cover increases with snowfall and decreases with snowmelt.
         """
-        self.Snow_accum += self.Snow - self.Snow_melt
+        self.snow_cover += self.snow - self.snowmelt
+        # Ensure snow cover doesn't go negative
+        self.snow_cover = max(self.snow_cover, 0.0)
 
-    def compute_julianday(self) -> int:
+    def compute_julian_day(self) -> int:
         """
-        Compute the Julian day based on self.Date.
-
-        Returns:
-            int: Julian day (1 for January 1, ... , 365 or 366 for December 31).
+        Compute the Julian day (day of year) from the current date.
+        
+        Returns
+        -------
+        int
+            Julian day (1-366)
         """
-        return self.Date.timetuple().tm_yday
-
-    def _Hamon_PET(self) -> float:
-        """
-        Calculate potential evapotranspiration using Hamon (1961).
-
-        Reference:
-            Hamon (1961): https://ascelibrary.org/doi/10.1061/JYCEAJ.0000599
-
-        Returns:
-            float: Potential evapotranspiration (mm/day).
-        """
-        J = self.compute_julianday()
-        phi = np.radians(self.LAT)
-        delta = 0.4093 * np.sin((2 * np.pi / 365) * J - 1.405)
-        omega_s = np.arccos(-np.tan(phi) * np.tan(delta))
-        Nt = 24 * omega_s / np.pi
-        a, b, c = 0.6108, 17.27, 237.3
-        es = a * np.exp(b * self.T_basin / (self.T_basin + c))
-        E = 2.1 * (Nt**2) * es / (self.T_basin + 273.3)
-        return E
+        return self.date.timetuple().tm_yday
 
     def compute_evapotranspiration(self) -> None:
         """
         Compute evapotranspiration using the Hamon method.
-
-        Process:
-            Calculate potential evapotranspiration (PET) using the Hamon method.
-            Compute actual evapotranspiration (ET) based on relative soil moisture.
+        
+        This method calculates potential evapotranspiration based on
+        day length and temperature, and then adjusts it to actual
+        evapotranspiration based on available soil moisture.
         """
-        self.PET = self._Hamon_PET()
-        rel_soil_moisture = self.S / self.S_max
-        self.ET = self.PET * rel_soil_moisture
-
-    def surface_runoff(self) -> None:
-        """
-        Compute surface runoff.
-
-        Process:
-            Surface runoff is the fraction of rainfall and snowmelt based on impermeable area.
-        """
-        self.Q_s = (self.Rain + self.Snow_melt) * self.fr
-
-    def percolation(self, excess_water: float) -> None:
-        """
-        Compute percolation.
-
-        Args:
-            excess_water (float): The excess water that percolates into the groundwater.
-        """
-        self.Percol = excess_water
+        # Calculate Julian day
+        julian_day = self.compute_julian_day()
+        
+        # Calculate declination angle
+        phi = np.radians(self.latitude)
+        delta = 0.4093 * np.sin((2 * np.pi / 365) * julian_day - 1.405)
+        
+        # Calculate day length
+        omega_s = np.arccos(-np.tan(phi) * np.tan(delta))
+        day_length = 24 * omega_s / np.pi
+        
+        # Calculate saturated vapor pressure
+        a, b, c = 0.6108, 17.27, 237.3
+        es = a * np.exp(b * self.basin_temp / (self.basin_temp + c))
+        
+        # Calculate potential evapotranspiration using Hamon method
+        self.pet = 2.1 * (day_length**2) * es / (self.basin_temp + 273.3)
+        
+        # Calculate actual evapotranspiration based on soil moisture availability
+        rel_soil_moisture = self.soil_moisture / self.S_max
+        self.et = self.pet * rel_soil_moisture
 
     def update_soil_moisture(self) -> None:
         """
-        Implement the water dynamics in the soil bucket.
-
-        Process:
-            Compute potential soil water content.
-            If potential soil water content exceeds the maximum storage, compute surface runoff.
-            Subtract surface runoff from potential soil water content.
-            If potential soil water content still exceeds the maximum storage, compute percolation.
-            Update soil water content.
+        Update soil moisture accounting for all water fluxes.
+        
+        This method implements the water dynamics in the soil bucket,
+        computing surface runoff and percolation based on soil moisture content.
         """
-        potential_soil_water_content = self.S + self.Rain + self.Snow_melt - self.ET
-        if potential_soil_water_content > self.S_max:
-            self.surface_runoff()
-        potential_soil_water_content -= self.Q_s
-        if potential_soil_water_content > self.S_max:
-            self.S = self.S_max
-            water_excess = potential_soil_water_content - self.S_max
-            self.percolation(water_excess)
+        # Calculate water input to soil
+        water_input = self.rain + self.snowmelt
+        
+        # Calculate potential soil water content
+        potential_soil_water = self.soil_moisture + water_input - self.et
+        
+        # Surface runoff generation when soil is saturated
+        if potential_soil_water > self.S_max:
+            self.surface_runoff = water_input * self.fr
+            potential_soil_water -= self.surface_runoff
+            
+            # Percolation to groundwater when soil is still saturated
+            if potential_soil_water > self.S_max:
+                self.percolation = potential_soil_water - self.S_max
+                self.soil_moisture = self.S_max
+            else:
+                self.soil_moisture = potential_soil_water
+                self.percolation = 0.0
         else:
-            self.S = max(potential_soil_water_content, 0)
+            # No runoff or percolation when soil is not saturated
+            self.soil_moisture = max(potential_soil_water, 0.0)
+            self.surface_runoff = 0.0
+            self.percolation = 0.0
 
-    def groundwater_runoff(self) -> None:
+    def update_groundwater(self) -> None:
         """
-        Compute groundwater runoff with the linear reservoir concept.
+        Update groundwater storage and compute baseflow.
+        
+        This method applies the linear reservoir concept to compute
+        groundwater runoff and update groundwater storage.
+        """
+        # Linear reservoir outflow
+        self.groundwater_runoff = self.groundwater / self.rg
+        
+        # Update groundwater storage
+        self.groundwater += self.percolation - self.groundwater_runoff
+        
+        # Ensure groundwater storage doesn't go negative
+        self.groundwater = max(self.groundwater, 0.0)
 
-        Note:
-            The minimal value of rg is 1.
+    def step(self, date: datetime, precip: float, tmax: float, tmin: float) -> Dict[str, float]:
         """
-        self.Q_gw = self.S_gw / self.rg
-
-    def update_groundwater_storage(self) -> None:
+        Perform one time step of the model.
+        
+        Parameters
+        ----------
+        date : datetime
+            Current simulation date
+        precip : float
+            Total precipitation [mm]
+        tmax : float
+            Maximum temperature [°C]
+        tmin : float
+            Minimum temperature [°C]
+            
+        Returns
+        -------
+        Dict[str, float]
+            Model outputs for the time step including:
+            - ET: Actual evapotranspiration [mm/day]
+            - Q_s: Surface runoff [mm/day]
+            - Q_gw: Groundwater runoff [mm/day]
+            - Total_Runoff: Total runoff (Q_s + Q_gw) [mm/day]
+            - Snow_accum: Snow accumulation [mm]
+            - S: Soil water content [mm]
+            - S_gw: Groundwater storage [mm]
+            - Snow_melt: Snowmelt [mm/day]
+            - Rain: Rainfall [mm]
+            - Snow: Snowfall [mm]
+            - Precip: Total precipitation [mm]
         """
-        Update groundwater storage based on groundwater runoff.
-
-        Process:
-            Add percolation to groundwater storage.
-            Subtract groundwater runoff from groundwater storage.
-            Ensure groundwater storage is non-negative.
-        """
-        self.S_gw += self.Percol - self.Q_gw
-        if self.S_gw < 0:
-            self.S_gw = 0
-
-    def reset_variables(self) -> None:
-        """
-        Reset the state variables to their initial values.
-
-        Variables reset:
-            Precip, Rain, Snow, Snow_melt, PET, ET, Q_s, Q_gw, Percol.
-        """
-        self.Precip = 0
-        self.Rain = 0
-        self.Snow = 0
-        self.Snow_melt = 0
-        self.PET = 0
-        self.ET = 0
-        self.Q_s = 0
-        self.Q_gw = 0
-        self.Percol = 0
+        # Set current time step inputs
+        self.date = date
+        self.precip = precip
+        self.temp_max = tmax
+        self.temp_min = tmin
+        
+        # Run all hydrological processes
+        self.adjust_temperature()
+        self.partition_precipitation()
+        self.compute_snow_melt()
+        self.update_snow_cover()
+        self.compute_evapotranspiration()
+        self.update_soil_moisture()
+        self.update_groundwater()
+        
+        # Return results for this time step
+        return {
+            "ET": self.et,
+            "Q_s": self.surface_runoff,
+            "Q_gw": self.groundwater_runoff,
+            "Total_Runoff": self.surface_runoff + self.groundwater_runoff,
+            "Snow_accum": self.snow_cover,
+            "S": self.soil_moisture,
+            "S_gw": self.groundwater,
+            "Snow_melt": self.snowmelt,
+            "Rain": self.rain,
+            "Snow": self.snow,
+            "Precip": self.precip,
+        }
 
     def run(self, data: pd.DataFrame) -> pd.DataFrame:
         """
-        Run the model with the provided data.
-
-        Args:
-            data (pd.DataFrame): DataFrame with index 'date' and columns 'P_mix', 'T_max', 'T_min'.
-
-        Returns:
-            pd.DataFrame: DataFrame with the simulation results.
+        Run the model for a period of time.
+        
+        Parameters
+        ----------
+        data : pd.DataFrame
+            DataFrame with columns ['P_mix', 'T_max', 'T_min'] and datetime index
+            
+        Returns
+        -------
+        pd.DataFrame
+            Model results with columns corresponding to model outputs
+            and the same index as the input data
         """
+        # Reset model state before running
         self.reset_state()
+        results = []
+        
+        # Run model for each time step
+        for date, row in data.iterrows():
+            step_result = self.step(
+                date, row["P_mix"], row["T_max"], row["T_min"])
+            results.append(step_result)
+        
+        # Compile results into DataFrame
+        return pd.DataFrame(results, index=data.index)
 
-        intermediate_results = {
-            "ET": [],
-            "Q_s": [],
-            "Q_gw": [],
-            "Snow_accum": [],
-            "S": [],
-            "S_gw": [],
-            "Snow_melt": [],
-            "Rain": [],
-            "Snow": [],
-            "Precip": [],
+    def get_parameters(self) -> Dict[str, float]:
+        """
+        Return current parameter values.
+        
+        Returns
+        -------
+        Dict[str, float]
+            Dictionary of current model parameters
+        """
+        return {
+            "k": self.k,
+            "S_max": self.S_max,
+            "fr": self.fr,
+            "rg": self.rg,
+            "snow_threshold_temp": self.snow_threshold_temp
         }
-        for index, row in data.iterrows():
-            self.reset_variables()
-            self.Date = index
-            self.Precip = row["P_mix"]
-            self.T_max = row["T_max"]
-            self.T_min = row["T_min"]
-            # self.gauge_adjustment()
-            self.adjust_temperature()
-            self.partition_precipitation()
-            self.compute_snow_melt()
-            self.update_snow_accum()
-            self.compute_evapotranspiration()
-            self.update_soil_moisture()
-            self.groundwater_runoff()
-            self.update_groundwater_storage()
-            for key in intermediate_results:
-                intermediate_results[key].append(getattr(self, key))
-        results_df = pd.DataFrame(intermediate_results, index=data.index)
-        return results_df
 
-    def update_parameters(self, parameters: dict) -> None:
+    def update_parameters(self, new_params: Dict[str, float], verbose: bool = False) -> None:
         """
-        Update the model parameters.
-
-        Args:
-            parameters (dict): A dictionary containing the parameters to update.
-
-        Raises:
-            ValueError: If any of the parameters are invalid.
+        Update model parameters.
+        
+        Parameters
+        ----------
+        new_params : Dict[str, float]
+            Dictionary of parameters to update
+        verbose : bool, optional
+            If True, print updated parameters
+            
+        Raises
+        ------
+        ValueError
+            If any parameter is outside its valid range
         """
-        for key, value in parameters.items():
-            if hasattr(self, key):
-                setattr(self, key, value)
-            else:
-                raise ValueError(f"Invalid parameter: {key}")
+        # Update parameters
+        if "k" in new_params:
+            self.k = new_params["k"]
+        if "S_max" in new_params:
+            self.S_max = new_params["S_max"]
+        if "fr" in new_params:
+            self.fr = new_params["fr"]
+        if "rg" in new_params:
+            self.rg = new_params["rg"]
+        if "snow_threshold_temp" in new_params:
+            self.snow_threshold_temp = new_params["snow_threshold_temp"]
+        
+        # Validate updated parameters
+        self._validate_params()
 
-        self.check_parameter_validity()
+        # Print updated parameters if verbose
+        if verbose:    
+            print("Parameters updated:")
+            print(f"  k: {self.k} mm/°C/day")
+            print(f"  S_max: {self.S_max} mm")
+            print(f"  fr: {self.fr}")
+            print(f"  rg: {self.rg} days")
+            print(f"  snow_threshold_temp: {self.snow_threshold_temp} °C")
 
-    def get_parameters(self) -> dict:
+    def copy(self) -> 'BucketModel':
         """
-        Return the model parameters.
-
-        Returns:
-            dict: A dictionary containing the model parameters.
+        Create a deep copy of the model.
+        
+        Returns
+        -------
+        BucketModel
+            A new BucketModel instance with the same parameters and state
         """
-        parameters = {
-            field.name: getattr(self, field.name)
-            for field in self.__dataclass_fields__.values()
-            if field.init
-        }
-        return parameters
-
-    def copy(self) -> "BucketModel":
-        """
-        Return a copy of the model.
-
-        Returns:
-            BucketModel: A deep copy of the model.
-        """
+        import copy
         return copy.deepcopy(self)
